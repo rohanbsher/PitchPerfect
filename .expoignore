@@ -1,0 +1,19 @@
+# Expo ignore file
+# Exclude directories from Metro bundler traversal
+
+# Documentation files
+*.md
+*.MD
+
+# Test files
+**/__tests__/**
+**/__mocks__/**
+
+# Don't traverse assets directory (contains binary files)
+# Assets are loaded via require() statements
+assets/audio/**
+
+# Build output
+ios/
+android/
+.expo/

@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PitchPerfect Verification Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 300;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            opacity: 0.8;
+            margin-bottom: 40px;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .test-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .test-card h3 {
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .status.pending { background: rgba(255, 255, 255, 0.2); }
+        .status.running { background: #FFC107; color: #000; }
+        .status.passed { background: #4CAF50; }
+        .status.failed { background: #F44336; }
+
+        .test-result {
+            font-family: monospace;
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border: none;
+            padding: 15px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        button.active {
+            background: #F44336;
+            color: white;
+        }
+
+        .live-display {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .note-display {
+            font-size: 80px;
+            font-weight: 300;
+            margin: 20px 0;
+        }
+
+        .freq-display {
+            font-size: 24px;
+            opacity: 0.8;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: #4CAF50;
+            width: 0%;
+            transition: width 0.2s ease;
+        }
+
+        .console-log {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 20px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .console-log .log-entry {
+            margin-bottom: 5px;
+        }
+
+        .console-log .error { color: #F44336; }
+        .console-log .success { color: #4CAF50; }
+        .console-log .info { color: #2196F3; }
+        .console-log .warn { color: #FFC107; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 PitchPerfect Verification</h1>
+        <p class="subtitle">Comprehensive Testing Dashboard</p>
+
+        <div class="controls">
+            <button id="runAllTests">Run All Tests</button>
+            <button id="startListening">Start Pitch Detection</button>
+        </div>
+
+        <div class="live-display" id="liveDisplay" style="display: none;">
+            <div class="note-display" id="noteDisplay">—</div>
+            <div class="freq-display" id="freqDisplay">Waiting for audio...</div>
+            <div class="confidence-bar">
+                <div class="confidence-fill" id="confidenceFill"></div>
+            </div>
+        </div>
+
+        <div class="test-grid" id="testGrid">
+            <!-- Tests will be added here -->
+        </div>
+
+        <div class="console-log" id="consoleLog">
+            <strong>Console Output:</strong><br>
+        </div>
+    </div>
+
+    <script>
+        // Console logging
+        const logContainer = document.getElementById('consoleLog');
+        function log(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `[${timestamp}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            console.log(message);
+        }
+
+        // Test results storage
+        const tests = {
+            webAudioAPI: { name: 'Web Audio API Support', status: 'pending', result: '' },
+            mediaDevices: { name: 'MediaDevices API Support', status: 'pending', result: '' },
+            audioContext: { name: 'AudioContext Creation', status: 'pending', result: '' },
+            micPermission: { name: 'Microphone Permission', status: 'pending', result: '' },
+            pitchDetection: { name: 'YIN Pitch Detection', status: 'pending', result: '' },
+            realTimeProcessing: { name: 'Real-time Processing', status: 'pending', result: '' }
+        };
+
+        // YIN Pitch Detection (simplified version)
+        class SimplePitchDetector {
+            constructor(sampleRate = 44100) {
+                this.sampleRate = sampleRate;
+            }
+
+            detectPitch(buffer) {
+                // Simple autocorrelation
+                const minFreq = 80;
+                const maxFreq = 1000;
+                let maxCorrelation = 0;
+                let bestOffset = -1;
+
+                for (let offset = Math.floor(this.sampleRate / maxFreq);
+                     offset < Math.floor(this.sampleRate / minFreq);
+                     offset++) {
+                    let correlation = 0;
+                    for (let i = 0; i < buffer.length - offset; i++) {
+                        correlation += Math.abs(buffer[i] * buffer[i + offset]);
+                    }
+                    if (correlation > maxCorrelation) {
+                        maxCorrelation = correlation;
+                        bestOffset = offset;
+                    }
+                }
+
+                const frequency = this.sampleRate / bestOffset;
+                const confidence = maxCorrelation > 0.01 ? Math.min(maxCorrelation * 100, 100) : 0;
+
+                return {
+                    frequency: (frequency > minFreq && frequency < maxFreq) ? frequency : 0,
+                    confidence: confidence / 100,
+                    note: this.frequencyToNote(frequency)
+                };
+            }
+
+            frequencyToNote(frequency) {
+                if (frequency <= 0) return '—';
+                const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                const A4 = 440;
+                const halfSteps = 12 * Math.log2(frequency / A4);
+                const noteIndex = Math.round(halfSteps + 69) % 12;
+                const octave = Math.floor((Math.round(halfSteps + 69)) / 12) - 1;
+                return noteNames[noteIndex] + octave;
+            }
+        }
+
+        // Audio system
+        let audioContext = null;
+        let analyser = null;
+        let microphone = null;
+        let stream = null;
+        let isListening = false;
+        let animationId = null;
+        let pitchDetector = null;
+
+        // Update test display
+        function updateTestDisplay() {
+            const grid = document.getElementById('testGrid');
+            grid.innerHTML = '';
+
+            Object.entries(tests).forEach(([key, test]) => {
+                const card = document.createElement('div');
+                card.className = 'test-card';
+                card.innerHTML = `
+                    <h3>${test.name}</h3>
+                    <div class="status ${test.status}">${test.status.toUpperCase()}</div>
+                    <div class="test-result">${test.result || 'No result yet'}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Test 1: Web Audio API Support
+        async function testWebAudioAPI() {
+            tests.webAudioAPI.status = 'running';
+            updateTestDisplay();
+
+            try {
+                const hasAudioContext = !!(window.AudioContext || window.webkitAudioContext);
+                if (hasAudioContext) {
+                    tests.webAudioAPI.status = 'passed';
+                    tests.webAudioAPI.result = '✅ AudioContext is supported\nAPI Version: ' +
+                        (window.AudioContext ? 'Standard' : 'WebKit');
+                    log('✅ Web Audio API is supported', 'success');
+                } else {
+                    throw new Error('AudioContext not available');
+                }
+            } catch (error) {
+                tests.webAudioAPI.status = 'failed';
+                tests.webAudioAPI.result = '❌ ' + error.message;
+                log('❌ Web Audio API test failed: ' + error.message, 'error');
+            }
+            updateTestDisplay();
+        }
+
+        // Test 2: MediaDevices API
+        async function testMediaDevices() {
+            tests.mediaDevices.status = 'running';
+            updateTestDisplay();
+
+            try {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    tests.mediaDevices.status = 'passed';
+                    tests.mediaDevices.result = '✅ getUserMedia is supported';
+                    log('✅ MediaDevices API is supported', 'success');
+                } else {
+                    throw new Error('getUserMedia not available');
+                }
+            } catch (error) {
+                tests.mediaDevices.status = 'failed';
+                tests.mediaDevices.result = '❌ ' + error.message;
+                log('❌ MediaDevices API test failed: ' + error.message, 'error');
+            }
+            updateTestDisplay();
+        }
+
+        // Test 3: AudioContext Creation
+        async function testAudioContext() {
+            tests.audioContext.status = 'running';
+            updateTestDisplay();
+
+            try {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                const testContext = new AudioContextClass();
+                const sampleRate = testContext.sampleRate;
+                await testContext.close();
+
+                tests.audioContext.status = 'passed';
+                tests.audioContext.result = `✅ AudioContext created successfully\nSample Rate: ${sampleRate} Hz`;
+                log(`✅ AudioContext created (Sample Rate: ${sampleRate} Hz)`, 'success');
+            } catch (error) {
+                tests.audioContext.status = 'failed';
+                tests.audioContext.result = '❌ ' + error.message;
+                log('❌ AudioContext creation failed: ' + error.message, 'error');
+            }
+            updateTestDisplay();
+        }
+
+        // Test 4: Microphone Permission
+        async function testMicPermission() {
+            tests.micPermission.status = 'running';
+            updateTestDisplay();
+
+            try {
+                const testStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                testStream.getTracks().forEach(track => track.stop());
+
+                tests.micPermission.status = 'passed';
+                tests.micPermission.result = '✅ Microphone permission granted';
+                log('✅ Microphone permission granted', 'success');
+            } catch (error) {
+                tests.micPermission.status = 'failed';
+                tests.micPermission.result = '❌ ' + error.message;
+                log('❌ Microphone permission denied: ' + error.message, 'error');
+            }
+            updateTestDisplay();
+        }
+
+        // Test 5: Pitch Detection Algorithm
+        function testPitchDetection() {
+            tests.pitchDetection.status = 'running';
+            updateTestDisplay();
+
+            try {
+                // Generate a 440 Hz test tone (A4)
+                const sampleRate = 44100;
+                const frequency = 440;
+                const duration = 0.1;
+                const samples = Math.floor(sampleRate * duration);
+                const buffer = new Float32Array(samples);
+
+                for (let i = 0; i < samples; i++) {
+                    buffer[i] = Math.sin(2 * Math.PI * frequency * i / sampleRate);
+                }
+
+                const detector = new SimplePitchDetector(sampleRate);
+                const result = detector.detectPitch(buffer);
+
+                const detectedFreq = Math.round(result.frequency);
+                const error = Math.abs(detectedFreq - frequency);
+
+                if (error < 5) {
+                    tests.pitchDetection.status = 'passed';
+                    tests.pitchDetection.result = `✅ Pitch detection working\nExpected: ${frequency} Hz\nDetected: ${detectedFreq} Hz\nNote: ${result.note}\nError: ${error} Hz`;
+                    log(`✅ Pitch detection accurate (${detectedFreq} Hz vs ${frequency} Hz)`, 'success');
+                } else {
+                    throw new Error(`Inaccurate detection: ${detectedFreq} Hz (expected ${frequency} Hz)`);
+                }
+            } catch (error) {
+                tests.pitchDetection.status = 'failed';
+                tests.pitchDetection.result = '❌ ' + error.message;
+                log('❌ Pitch detection test failed: ' + error.message, 'error');
+            }
+            updateTestDisplay();
+        }
+
+        // Start real-time pitch detection
+        async function startPitchDetection() {
+            if (isListening) {
+                stopPitchDetection();
+                return;
+            }
+
+            try {
+                log('🎤 Starting microphone capture...', 'info');
+
+                stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }
+                });
+
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                audioContext = new AudioContextClass();
+
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+                analyser.smoothingTimeConstant = 0.3;
+
+                microphone = audioContext.createMediaStreamSource(stream);
+                microphone.connect(analyser);
+
+                pitchDetector = new SimplePitchDetector(audioContext.sampleRate);
+
+                isListening = true;
+                document.getElementById('startListening').textContent = 'Stop Listening';
+                document.getElementById('startListening').classList.add('active');
+                document.getElementById('liveDisplay').style.display = 'block';
+
+                tests.realTimeProcessing.status = 'running';
+                updateTestDisplay();
+
+                processPitch();
+
+                log(`✅ Microphone capture started (${audioContext.sampleRate} Hz)`, 'success');
+
+            } catch (error) {
+                log('❌ Failed to start: ' + error.message, 'error');
+                tests.realTimeProcessing.status = 'failed';
+                tests.realTimeProcessing.result = '❌ ' + error.message;
+                updateTestDisplay();
+            }
+        }
+
+        function processPitch() {
+            if (!isListening) return;
+
+            const bufferLength = analyser.fftSize;
+            const dataArray = new Float32Array(bufferLength);
+            analyser.getFloatTimeDomainData(dataArray);
+
+            const result = pitchDetector.detectPitch(dataArray);
+
+            if (result.frequency > 0) {
+                document.getElementById('noteDisplay').textContent = result.note;
+                document.getElementById('freqDisplay').textContent = `${Math.round(result.frequency)} Hz`;
+                document.getElementById('confidenceFill').style.width = `${result.confidence * 100}%`;
+
+                tests.realTimeProcessing.status = 'passed';
+                tests.realTimeProcessing.result = `✅ Real-time processing active\nLatest: ${result.note} @ ${Math.round(result.frequency)} Hz`;
+            } else {
+                document.getElementById('noteDisplay').textContent = '—';
+                document.getElementById('freqDisplay').textContent = 'Waiting for audio...';
+            }
+
+            updateTestDisplay();
+            animationId = requestAnimationFrame(processPitch);
+        }
+
+        function stopPitchDetection() {
+            isListening = false;
+
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+
+            if (microphone) {
+                microphone.disconnect();
+            }
+
+            if (audioContext) {
+                audioContext.close();
+            }
+
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+
+            document.getElementById('startListening').textContent = 'Start Pitch Detection';
+            document.getElementById('startListening').classList.remove('active');
+            document.getElementById('liveDisplay').style.display = 'none';
+
+            log('🛑 Pitch detection stopped', 'info');
+        }
+
+        // Run all tests
+        async function runAllTests() {
+            log('🧪 Starting comprehensive test suite...', 'info');
+            await testWebAudioAPI();
+            await new Promise(r => setTimeout(r, 500));
+            await testMediaDevices();
+            await new Promise(r => setTimeout(r, 500));
+            await testAudioContext();
+            await new Promise(r => setTimeout(r, 500));
+            await testMicPermission();
+            await new Promise(r => setTimeout(r, 500));
+            testPitchDetection();
+            log('✅ All tests complete!', 'success');
+        }
+
+        // Event listeners
+        document.getElementById('runAllTests').addEventListener('click', runAllTests);
+        document.getElementById('startListening').addEventListener('click', startPitchDetection);
+
+        // Initialize
+        updateTestDisplay();
+        log('🎵 PitchPerfect Verification Tool Ready', 'info');
+        log('Click "Run All Tests" to verify system capabilities', 'info');
+    </script>
+</body>
+</html>

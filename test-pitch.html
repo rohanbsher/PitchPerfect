@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PitchPerfect - Simple Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px;
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 200;
+            margin-bottom: 40px;
+            letter-spacing: -1px;
+        }
+
+        .display {
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 40px 0;
+        }
+
+        #note {
+            font-size: 96px;
+            font-weight: 300;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+
+        #frequency {
+            font-size: 32px;
+            opacity: 0.8;
+            margin: 10px 0;
+        }
+
+        #volume {
+            font-size: 18px;
+            opacity: 0.6;
+            margin: 10px 0;
+        }
+
+        #status {
+            font-size: 18px;
+            opacity: 0.8;
+            margin: 20px 0;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border: none;
+            padding: 20px 60px;
+            font-size: 20px;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button.active {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .confidence-bar {
+            width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            margin: 20px auto;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: #00ff88;
+            transition: width 0.3s ease;
+            border-radius: 3px;
+        }
+
+        .debug {
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-width: 600px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 PitchPerfect</h1>
+
+        <div class="display">
+            <div id="note">-</div>
+            <div id="frequency">Ready to detect pitch</div>
+            <div id="volume"></div>
+            <div class="confidence-bar">
+                <div class="confidence-fill" id="confidence" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <button id="startButton" onclick="toggleListening()">Start Listening</button>
+
+        <div id="status"></div>
+
+        <div class="debug" id="debug">
+            <strong>Debug Info:</strong><br>
+            Click "Start Listening" and allow microphone access
+        </div>
+    </div>
+
+    <script>
+        let audioContext = null;
+        let analyser = null;
+        let microphone = null;
+        let isListening = false;
+        let animationId = null;
+
+        // Simple autocorrelation-based pitch detection
+        function autoCorrelate(buffer, sampleRate) {
+            const minSamples = 4;
+            const maxSamples = Math.floor(buffer.length / 2);
+            let bestOffset = -1;
+            let bestCorrelation = 0;
+            let rms = 0;
+
+            // Calculate RMS
+            for (let i = 0; i < buffer.length; i++) {
+                rms += buffer[i] * buffer[i];
+            }
+            rms = Math.sqrt(rms / buffer.length);
+
+            // Not enough signal
+            if (rms < 0.01) {
+                return -1;
+            }
+
+            // Autocorrelation
+            for (let offset = minSamples; offset < maxSamples; offset++) {
+                let correlation = 0;
+
+                for (let i = 0; i < maxSamples; i++) {
+                    correlation += Math.abs(buffer[i] - buffer[i + offset]);
+                }
+
+                correlation = 1 - (correlation / maxSamples);
+
+                if (correlation > bestCorrelation) {
+                    bestCorrelation = correlation;
+                    bestOffset = offset;
+                }
+            }
+
+            if (bestCorrelation > 0.9) {
+                return sampleRate / bestOffset;
+            }
+
+            return -1;
+        }
+
+        function frequencyToNote(frequency) {
+            if (frequency <= 0) return '-';
+
+            const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const a4 = 440;
+            const c0 = a4 * Math.pow(2, -4.75);
+
+            const halfSteps = 12 * Math.log2(frequency / c0);
+            const octave = Math.floor(halfSteps / 12);
+            const noteIndex = Math.round(halfSteps) % 12;
+
+            return notes[noteIndex] + octave;
+        }
+
+        async function startListening() {
+            try {
+                document.getElementById('debug').innerHTML = '<strong>Debug:</strong> Requesting microphone access...';
+
+                // Get microphone access
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }
+                });
+
+                document.getElementById('debug').innerHTML = '<strong>Debug:</strong> Microphone access granted!';
+
+                // Create audio context
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+                // Create analyser node
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+                analyser.smoothingTimeConstant = 0;
+
+                // Connect microphone to analyser
+                microphone = audioContext.createMediaStreamSource(stream);
+                microphone.connect(analyser);
+
+                isListening = true;
+                document.getElementById('startButton').textContent = 'Stop Listening';
+                document.getElementById('startButton').classList.add('active');
+                document.getElementById('status').textContent = '🎤 Listening...';
+
+                // Start processing
+                processAudio();
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('debug').innerHTML = '<strong>Error:</strong> ' + error.message;
+                document.getElementById('status').textContent = '❌ Error: ' + error.message;
+            }
+        }
+
+        function processAudio() {
+            if (!isListening) return;
+
+            const buffer = new Float32Array(analyser.fftSize);
+            analyser.getFloatTimeDomainData(buffer);
+
+            // Calculate volume
+            let sum = 0;
+            for (let i = 0; i < buffer.length; i++) {
+                sum += buffer[i] * buffer[i];
+            }
+            const volume = Math.sqrt(sum / buffer.length);
+
+            // Detect pitch
+            const frequency = autoCorrelate(buffer, audioContext.sampleRate);
+
+            // Update display
+            if (frequency > 0 && frequency < 2000) {
+                const note = frequencyToNote(frequency);
+                document.getElementById('note').textContent = note;
+                document.getElementById('frequency').textContent = Math.round(frequency) + ' Hz';
+
+                // Color based on standard tuning
+                const noteColor = getColorForNote(note, frequency);
+                document.getElementById('note').style.color = noteColor;
+
+                // Confidence based on volume
+                const confidence = Math.min(100, volume * 500);
+                document.getElementById('confidence').style.width = confidence + '%';
+
+                document.getElementById('debug').innerHTML =
+                    `<strong>Debug:</strong><br>
+                    Note: ${note}<br>
+                    Frequency: ${Math.round(frequency)} Hz<br>
+                    Volume: ${volume.toFixed(4)}<br>
+                    Sample Rate: ${audioContext.sampleRate} Hz<br>
+                    Buffer Size: ${analyser.fftSize}`;
+            } else {
+                document.getElementById('note').textContent = '-';
+                document.getElementById('frequency').textContent = volume > 0.01 ? 'Processing...' : 'Too quiet';
+                document.getElementById('confidence').style.width = '0%';
+            }
+
+            document.getElementById('volume').textContent = 'Volume: ' + (volume * 100).toFixed(1) + '%';
+
+            // Continue processing
+            animationId = requestAnimationFrame(processAudio);
+        }
+
+        function getColorForNote(note, frequency) {
+            // Get expected frequency for the note
+            const notes = {
+                'C': 261.63, 'C#': 277.18, 'D': 293.66, 'D#': 311.13,
+                'E': 329.63, 'F': 349.23, 'F#': 369.99, 'G': 392.00,
+                'G#': 415.30, 'A': 440.00, 'A#': 466.16, 'B': 493.88
+            };
+
+            const noteName = note.replace(/[0-9]/g, '');
+            const octave = parseInt(note.replace(/[^0-9]/g, '')) || 4;
+            const expectedFreq = notes[noteName] * Math.pow(2, octave - 4);
+
+            if (!expectedFreq) return '#ffffff';
+
+            const cents = 1200 * Math.log2(frequency / expectedFreq);
+            const absCents = Math.abs(cents);
+
+            if (absCents <= 5) return '#00ff88';
+            if (absCents <= 15) return '#ffe066';
+            return '#ff6b6b';
+        }
+
+        function stopListening() {
+            isListening = false;
+
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+
+            if (microphone) {
+                microphone.disconnect();
+            }
+
+            if (audioContext) {
+                audioContext.close();
+            }
+
+            document.getElementById('startButton').textContent = 'Start Listening';
+            document.getElementById('startButton').classList.remove('active');
+            document.getElementById('status').textContent = '';
+            document.getElementById('note').textContent = '-';
+            document.getElementById('frequency').textContent = 'Ready to detect pitch';
+            document.getElementById('confidence').style.width = '0%';
+            document.getElementById('debug').innerHTML = '<strong>Debug:</strong> Stopped';
+        }
+
+        function toggleListening() {
+            if (isListening) {
+                stopListening();
+            } else {
+                startListening();
+            }
+        }
+    </script>
+</body>
+</html>

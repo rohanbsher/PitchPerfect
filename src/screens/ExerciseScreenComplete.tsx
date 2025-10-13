@@ -33,6 +33,7 @@ import { Header } from '../components/home/Header';
 import { Greeting } from '../components/home/Greeting';
 import { HeroCard } from '../components/home/HeroCard';
 import { ExploreSection } from '../components/home/ExploreSection';
+import { ExercisePreview } from './ExercisePreview';
 
 // NEW: Import recommendation system
 import {
@@ -88,6 +89,9 @@ export const ExerciseScreenComplete: React.FC = () => {
 
   // NEW: UI state
   const [isExploreExpanded, setIsExploreExpanded] = useState(false);
+  const [showPreview, setShowPreview] = useState(false); // Show exercise preview before starting
+  const [countdownActive, setCountdownActive] = useState(false); // Pre-exercise countdown
+  const [countdownSeconds, setCountdownSeconds] = useState(3); // 3, 2, 1
 
   // Exercise state
   const allExercises = [...breathingExercises, ...scaleExercises];
@@ -125,6 +129,25 @@ export const ExerciseScreenComplete: React.FC = () => {
       updateRecommendation();
     }
   }, [userProgress, todaysExercises, isLoadingProgress]);
+
+  // NEW: Pre-exercise countdown timer
+  useEffect(() => {
+    if (!countdownActive) return;
+
+    if (countdownSeconds === 0) {
+      // Countdown finished - start actual exercise
+      setCountdownActive(false);
+      setCountdownSeconds(3); // Reset for next time
+      actuallyStartExercise(); // Call the actual start function
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCountdownSeconds(prev => prev - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [countdownActive, countdownSeconds]);
 
   // NEW: Auto-transition countdown timer
   useEffect(() => {
@@ -214,7 +237,15 @@ export const ExerciseScreenComplete: React.FC = () => {
     }
   };
 
-  const startExercise = async () => {
+  // NEW: Wrapper that shows countdown first
+  const startExercise = () => {
+    // Start countdown (3, 2, 1)
+    setCountdownActive(true);
+    setCountdownSeconds(3);
+  };
+
+  // NEW: Actually start the exercise (called after countdown)
+  const actuallyStartExercise = async () => {
     setIsRunning(true);
     setResults(null);
     setCurrentNoteIndex(0);
@@ -428,6 +459,20 @@ export const ExerciseScreenComplete: React.FC = () => {
 
   const handleExerciseSelect = (exercise: Exercise) => {
     setSelectedExercise(exercise);
+    setShowPreview(true); // Show preview instead of starting immediately
+  };
+
+  const handlePreviewStart = () => {
+    setShowPreview(false);
+    startExercise();
+  };
+
+  const handlePreviewBack = () => {
+    setShowPreview(false);
+  };
+
+  const handleQuickStart = () => {
+    setShowPreview(true); // Show preview for recommended exercise
   };
 
   // NEW: Start a practice session (Flow Mode)
@@ -471,10 +516,41 @@ export const ExerciseScreenComplete: React.FC = () => {
   };
 
   // ============================================
-  // RENDER: RESULTS SCREEN (Keep existing)
+  // RENDER: RESULTS SCREEN (Enhanced with storytelling)
   // ============================================
   if (results) {
     const encouragingMsg = generateEncouragingMessage(results);
+
+    // Calculate progress stats for storytelling
+    const passedCount = results.noteResults.filter(n => n.passed).length;
+    const totalNotes = results.noteResults.length;
+    const progressText = totalNotes > 0
+      ? `You hit ${passedCount} out of ${totalNotes} notes accurately`
+      : "You completed all breathing rounds";
+
+    // Determine next recommended exercise
+    const getNextRecommendation = (): string => {
+      if (results.overallAccuracy >= 85) {
+        // Doing great - suggest next level
+        if (selectedExercise.difficulty === 'beginner') {
+          return "Ready for: Try an intermediate exercise";
+        } else {
+          return "Next: Challenge yourself with a harder exercise";
+        }
+      } else if (results.overallAccuracy >= 70) {
+        // Solid - suggest similar
+        return `Practice again: ${selectedExercise.name} to build consistency`;
+      } else {
+        // Struggling - suggest foundation
+        if (selectedExercise.type === 'vocal') {
+          return "Foundation: Start with Diaphragmatic Breathing";
+        } else {
+          return `Keep practicing: ${selectedExercise.name}`;
+        }
+      }
+    };
+
+    const nextRecommendation = getNextRecommendation();
 
     return (
       <View style={[styles.container, { backgroundColor: DS.colors.background.primary }]}>
@@ -506,6 +582,11 @@ export const ExerciseScreenComplete: React.FC = () => {
               {results.overallAccuracy}%
             </Text>
 
+            {/* Progress Story */}
+            <Text style={[styles.progressText, DS.typography.body, { color: DS.colors.text.tertiary }]}>
+              {progressText}
+            </Text>
+
             <Text style={[styles.encouragingText, DS.typography.callout, { color: DS.colors.text.secondary }]}>
               {encouragingMsg.subtitle}
             </Text>
@@ -515,6 +596,16 @@ export const ExerciseScreenComplete: React.FC = () => {
                 💡 {encouragingMsg.improvement}
               </Text>
             )}
+
+            {/* What's Next */}
+            <View style={[styles.nextCard, { backgroundColor: `${DS.colors.accent.primary}15` }]}>
+              <Text style={[styles.nextTitle, DS.typography.headline, { color: DS.colors.accent.primary }]}>
+                What's Next?
+              </Text>
+              <Text style={[styles.nextText, DS.typography.body, { color: DS.colors.text.secondary }]}>
+                {nextRecommendation}
+              </Text>
+            </View>
 
             <View style={styles.divider} />
 
@@ -696,6 +787,46 @@ export const ExerciseScreenComplete: React.FC = () => {
   }
 
   // ============================================
+  // RENDER: PRE-EXERCISE COUNTDOWN
+  // ============================================
+  if (countdownActive) {
+    const getCountdownMessage = () => {
+      if (countdownSeconds === 3) return "Get ready...";
+      if (countdownSeconds === 2) return `First ${selectedExercise.type === 'vocal' ? 'note' : 'round'}: ${selectedExercise.type === 'vocal' && selectedExercise.notes ? selectedExercise.notes[0].note : 'Inhale'}`;
+      if (countdownSeconds === 1) return "Listen, then sing!";
+      return "";
+    };
+
+    return (
+      <View style={[styles.container, { backgroundColor: DS.colors.background.primary }]}>
+        <StatusBar barStyle="light-content" />
+        <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <View style={styles.countdownContainer}>
+            <Text style={styles.countdownNumber}>{countdownSeconds}</Text>
+            <Text style={styles.countdownMessage}>{getCountdownMessage()}</Text>
+            <Text style={styles.countdownHint}>
+              {selectedExercise.type === 'vocal' ? '🎧 Have your headphones on' : '🧘 Sit with straight posture'}
+            </Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  // ============================================
+  // RENDER: EXERCISE PREVIEW
+  // ============================================
+  if (showPreview) {
+    return (
+      <ExercisePreview
+        exercise={selectedExercise}
+        onStart={handlePreviewStart}
+        onBack={handlePreviewBack}
+      />
+    );
+  }
+
+  // ============================================
   // RENDER: HOME SCREEN - REDESIGNED!
   // ============================================
   const timeOfDay = getTimeOfDay();
@@ -730,7 +861,7 @@ export const ExerciseScreenComplete: React.FC = () => {
           {/* Hero Card - Main recommendation */}
           <HeroCard
             exercise={recommendedExercise}
-            onStart={startExercise}
+            onStart={handleQuickStart}
             onStartSession={handleStartSession}
             reasonText={reasonText}
             isReady={isReady}
@@ -782,6 +913,29 @@ const styles = StyleSheet.create({
     padding: DS.spacing.xl,
   },
 
+  // Countdown screen
+  countdownContainer: {
+    alignItems: 'center',
+    paddingHorizontal: DS.spacing.xl,
+  },
+  countdownNumber: {
+    fontSize: 120,
+    fontWeight: '700',
+    color: DS.colors.accent.primary,
+    marginBottom: DS.spacing.xl,
+  },
+  countdownMessage: {
+    ...DS.typography.title2,
+    color: DS.colors.text.primary,
+    textAlign: 'center',
+    marginBottom: DS.spacing.lg,
+  },
+  countdownHint: {
+    ...DS.typography.body,
+    color: DS.colors.text.tertiary,
+    textAlign: 'center',
+  },
+
   // Results screen (keep existing styles)
   celebrationTitle: {
     textAlign: 'center',
@@ -802,6 +956,11 @@ const styles = StyleSheet.create({
     marginBottom: DS.spacing.md,
   },
 
+  progressText: {
+    textAlign: 'center',
+    marginBottom: DS.spacing.md,
+  },
+
   encouragingText: {
     textAlign: 'center',
     marginBottom: DS.spacing.lg,
@@ -813,6 +972,20 @@ const styles = StyleSheet.create({
     padding: DS.spacing.md,
     backgroundColor: `${DS.colors.accent.warning}20`,
     borderRadius: DS.radius.md,
+  },
+
+  // What's Next card
+  nextCard: {
+    padding: DS.spacing.lg,
+    borderRadius: DS.radius.lg,
+    marginBottom: DS.spacing.lg,
+  },
+  nextTitle: {
+    fontWeight: '600',
+    marginBottom: DS.spacing.sm,
+  },
+  nextText: {
+    lineHeight: 22,
   },
 
   divider: {

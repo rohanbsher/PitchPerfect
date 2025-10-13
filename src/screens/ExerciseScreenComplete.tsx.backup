@@ -1,0 +1,637 @@
+/**
+ * COMPLETE EXERCISE SCREEN
+ * Full implementation with ExerciseEngineV2
+ * Tests complete user flow: Select exercise → Run → Results
+ */
+
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
+import { ExerciseEngineV2 } from '../engines/ExerciseEngineV2';
+import { YINPitchDetector } from '../utils/pitchDetection';
+import { scaleExercises } from '../data/exercises/scales';
+import { breathingExercises } from '../data/exercises/breathing';
+import { Exercise, ExerciseResults, Note, ExerciseSettings } from '../data/models';
+import { PitchScaleVisualizer } from '../components/PitchScaleVisualizer';
+import { CelebrationConfetti } from '../components/CelebrationConfetti';
+import { DesignSystem as DS } from '../design/DesignSystem';
+import { AudioServiceFactory } from '../services/audio/AudioServiceFactory';
+import { IAudioService } from '../services/audio/IAudioService';
+import { generateEncouragingMessage } from '../utils/encouragingMessages';
+
+export const ExerciseScreenComplete: React.FC = () => {
+  const [isReady, setIsReady] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [currentNoteIndex, setCurrentNoteIndex] = useState(0);
+  const [currentNote, setCurrentNote] = useState<Note | null>(null);
+  const [detectedNote, setDetectedNote] = useState('—');
+  const [detectedFrequency, setDetectedFrequency] = useState(0);
+  const [accuracy, setAccuracy] = useState(0);
+  const [confidence, setConfidence] = useState(0);
+  const [results, setResults] = useState<ExerciseResults | null>(null);
+  // Combine all exercises: breathing first (foundation), then vocal exercises
+  const allExercises = [...breathingExercises, ...scaleExercises];
+  const [selectedExercise, setSelectedExercise] = useState<Exercise>(allExercises[0]);
+
+  // Refs
+  const audioServiceRef = useRef<IAudioService | null>(null);
+  const pitchDetectorRef = useRef<YINPitchDetector | null>(null);
+  const engineRef = useRef<ExerciseEngineV2 | null>(null);
+
+  useEffect(() => {
+    initializeAudio();
+    return () => {
+      cleanup();
+    };
+  }, []);
+
+  const initializeAudio = async () => {
+    try {
+      console.log('🎹 Initializing audio for complete exercise...');
+
+      // 1. Create platform-specific audio service
+      const audioService = AudioServiceFactory.create();
+      audioServiceRef.current = audioService;
+
+      // 2. Initialize audio service
+      await audioService.initialize();
+
+      // 3. Request permissions
+      const granted = await audioService.requestPermissions();
+      if (!granted) {
+        console.error('❌ Microphone permission denied');
+        return;
+      }
+
+      // 4. Create pitch detector
+      const sampleRate = audioService.getSampleRate();
+      pitchDetectorRef.current = new YINPitchDetector(sampleRate, 2048, 0.1);
+
+      console.log('✅ Audio initialized');
+      setIsReady(true);
+    } catch (error) {
+      console.error('❌ Audio initialization failed:', error);
+    }
+  };
+
+  const startExercise = async () => {
+    setIsRunning(true);
+    setResults(null);
+    setCurrentNoteIndex(0);
+    setCurrentNote(null);
+
+    // BREATHING EXERCISE - Different flow
+    if (selectedExercise.type === 'breathing') {
+      console.log('🫁 Starting breathing exercise:', selectedExercise.name);
+      // TODO: Implement breathing exercise flow with BreathingCircle
+      // For now, just show a placeholder
+      alert('Breathing exercises coming soon! Use vocal exercises for now.');
+      setIsRunning(false);
+      return;
+    }
+
+    // VOCAL EXERCISE - Use ExerciseEngineV2
+    if (!audioServiceRef.current || !pitchDetectorRef.current) {
+      console.error('❌ Audio not ready');
+      setIsRunning(false);
+      return;
+    }
+
+    try {
+      // Create exercise settings
+      const settings: ExerciseSettings = {
+        tempo: selectedExercise.defaultTempo || 60, // 60 BPM = 1 beat per second
+        tolerance: 70, // 70% accuracy to pass
+        startingNote: selectedExercise.defaultStartingNote || 'C4',
+        repeatCount: 1,
+      };
+
+      // Create engine
+      const engine = new ExerciseEngineV2(
+        selectedExercise,
+        settings,
+        audioServiceRef.current,
+        pitchDetectorRef.current
+      );
+
+      engineRef.current = engine;
+
+      // Set callbacks
+      engine.setOnNoteChange((index, note) => {
+        console.log(`📍 Note ${index + 1}: ${note.note}`);
+        setCurrentNoteIndex(index);
+        setCurrentNote(note);
+      });
+
+      engine.setOnPitchDetected((frequency, note, accuracyValue, confidenceValue) => {
+        setDetectedFrequency(frequency);
+        setDetectedNote(note);
+        setAccuracy(accuracyValue);
+        setConfidence(confidenceValue);
+      });
+
+      engine.setOnComplete((exerciseResults) => {
+        console.log('🎉 Exercise completed!', exerciseResults);
+        setIsRunning(false);
+        setResults(exerciseResults);
+      });
+
+      engine.setOnError((error) => {
+        console.error('❌ Exercise error:', error);
+        setIsRunning(false);
+      });
+
+      // Start the engine!
+      await engine.start();
+
+    } catch (error) {
+      console.error('❌ Failed to start exercise:', error);
+      setIsRunning(false);
+    }
+  };
+
+  const stopExercise = async () => {
+    if (engineRef.current) {
+      await engineRef.current.stop();
+      setIsRunning(false);
+    }
+  };
+
+  const cleanup = () => {
+    if (audioServiceRef.current) {
+      audioServiceRef.current.dispose();
+      audioServiceRef.current = null;
+    }
+    if (engineRef.current) {
+      engineRef.current.stop();
+      engineRef.current = null;
+    }
+  };
+
+  // Results screen
+  if (results) {
+    const encouragingMsg = generateEncouragingMessage(results);
+
+    return (
+      <View style={[styles.container, { backgroundColor: DS.colors.background.primary }]}>
+        <StatusBar barStyle="light-content" />
+
+        {/* Celebration confetti - triggers on render */}
+        <CelebrationConfetti
+          trigger={true}
+          accuracy={results.overallAccuracy}
+        />
+
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* Encouraging title instead of "Exercise Complete" */}
+          <Text style={[styles.celebrationTitle, DS.typography.largeTitle, { color: DS.colors.text.primary }]}>
+            {encouragingMsg.title}
+          </Text>
+
+          <View style={styles.resultsCard}>
+            <Text style={[styles.scoreText, { color: DS.colors.accent.success }]}>
+              {results.overallAccuracy}%
+            </Text>
+
+            {/* Encouraging subtitle - specific praise */}
+            <Text style={[styles.encouragingText, DS.typography.callout, { color: DS.colors.text.secondary }]}>
+              {encouragingMsg.subtitle}
+            </Text>
+
+            {/* Improvement suggestion if available */}
+            {encouragingMsg.improvement && (
+              <Text style={[styles.improvementText, DS.typography.footnote, { color: DS.colors.accent.warning }]}>
+                💡 {encouragingMsg.improvement}
+              </Text>
+            )}
+
+            <View style={styles.divider} />
+
+            <Text style={[styles.sectionTitle, DS.typography.title3, { color: DS.colors.text.primary }]}>
+              Results by Note
+            </Text>
+            {results.noteResults.map((result, idx) => (
+              <View key={idx} style={styles.noteResultRow}>
+                <Text style={[styles.noteText, DS.typography.body, { color: DS.colors.text.primary }]}>
+                  {result.noteExpected}
+                </Text>
+                <Text style={[DS.typography.body, {
+                  color: result.passed ? DS.colors.accent.success : DS.colors.accent.error
+                }]}>
+                  {result.averageAccuracy}% {result.passed ? '✓' : '✗'}
+                </Text>
+              </View>
+            ))}
+
+            {results.strengths.length > 0 && (
+              <>
+                <View style={styles.divider} />
+                <Text style={[styles.sectionTitle, DS.typography.title3, { color: DS.colors.text.primary }]}>
+                  Strengths
+                </Text>
+                {results.strengths.map((strength, idx) => (
+                  <Text key={idx} style={[styles.feedbackText, DS.typography.callout, { color: DS.colors.text.secondary }]}>
+                    • {strength}
+                  </Text>
+                ))}
+              </>
+            )}
+
+            {results.improvements.length > 0 && (
+              <>
+                <View style={styles.divider} />
+                <Text style={[styles.sectionTitle, DS.typography.title3, { color: DS.colors.text.primary }]}>
+                  Areas to Improve
+                </Text>
+                {results.improvements.map((improvement, idx) => (
+                  <Text key={idx} style={[styles.feedbackText, DS.typography.callout, { color: DS.colors.text.secondary }]}>
+                    • {improvement}
+                  </Text>
+                ))}
+              </>
+            )}
+          </View>
+
+          <TouchableOpacity onPress={() => setResults(null)} style={styles.buttonWrapper} activeOpacity={0.7}>
+            <View style={styles.button}>
+              <Text style={styles.buttonText}>Try Again</Text>
+            </View>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // Main screen
+  return (
+    <View style={[styles.container, { backgroundColor: DS.colors.background.primary }]}>
+      <StatusBar barStyle="light-content" />
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={[styles.title, DS.typography.largeTitle, { color: DS.colors.text.primary }]}>
+          Vocal Training
+        </Text>
+        <Text style={[styles.subtitle, DS.typography.callout, { color: DS.colors.text.secondary }]}>
+          Choose an exercise to improve your pitch
+        </Text>
+
+        {/* Exercise Selection */}
+        <View style={styles.exerciseSelector}>
+          {allExercises.map((exercise) => (
+            <TouchableOpacity
+              key={exercise.id}
+              onPress={() => setSelectedExercise(exercise)}
+              activeOpacity={0.7}
+              style={styles.exerciseOption}
+            >
+              <View style={[
+                styles.exerciseCard,
+                selectedExercise.id === exercise.id && styles.exerciseCardSelected
+              ]}>
+                {/* Header with title, checkmark (if selected), and difficulty badge */}
+                <View style={styles.exerciseCardHeader}>
+                  <View style={styles.exerciseTitleRow}>
+                    {selectedExercise.id === exercise.id && (
+                      <Text style={styles.exerciseCheckmark}>✓ </Text>
+                    )}
+                    <Text style={[styles.exerciseName, DS.typography.headline, { color: DS.colors.text.primary }]}>
+                      {exercise.name}
+                    </Text>
+                  </View>
+                  <View style={[
+                    styles.difficultyBadge,
+                    exercise.difficulty === 'beginner' && styles.difficultyBadgeBeginner,
+                    exercise.difficulty === 'intermediate' && styles.difficultyBadgeIntermediate,
+                    exercise.difficulty === 'advanced' && styles.difficultyBadgeAdvanced,
+                  ]}>
+                    <Text style={[styles.difficultyBadgeText, DS.typography.caption2, {
+                      color: exercise.difficulty === 'beginner' ? DS.colors.accent.success :
+                             exercise.difficulty === 'intermediate' ? DS.colors.accent.warning :
+                             DS.colors.accent.error
+                    }]}>
+                      {exercise.difficulty.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Description */}
+                <Text style={[styles.exerciseDesc, DS.typography.footnote, { color: DS.colors.text.secondary }]}>
+                  {exercise.description}
+                </Text>
+
+                {/* Metadata row with icons */}
+                <View style={styles.exerciseMetadata}>
+                  {exercise.type === 'vocal' && exercise.notes && (
+                    <Text style={[styles.exerciseMetadataText, DS.typography.caption2, { color: DS.colors.text.tertiary }]}>
+                      🎵 {exercise.notes.length} notes
+                    </Text>
+                  )}
+                  {exercise.type === 'breathing' && exercise.breathingRounds && (
+                    <Text style={[styles.exerciseMetadataText, DS.typography.caption2, { color: DS.colors.text.tertiary }]}>
+                      💨 {exercise.breathingRounds.length} rounds
+                    </Text>
+                  )}
+                  <Text style={[styles.exerciseMetadataText, DS.typography.caption2, { color: DS.colors.text.tertiary }]}>
+                    ⏱ ~{exercise.duration}s
+                  </Text>
+                  <Text style={[styles.exerciseMetadataText, DS.typography.caption2, { color: DS.colors.text.tertiary }]}>
+                    {exercise.category === 'breathing' && '💨 Breathing'}
+                    {exercise.category === 'warm-up' && '🔥 Warm-up'}
+                    {exercise.category === 'scale' && '🎹 Scale'}
+                    {exercise.category === 'interval' && '📏 Interval'}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Current Status */}
+        {isRunning && (
+          <View style={styles.statusCard}>
+            <Text style={[DS.typography.title3, { color: DS.colors.text.primary, marginBottom: DS.spacing.md }]}>
+              Now Playing
+            </Text>
+            <Text style={[DS.typography.largeTitle, { color: DS.colors.accent.primary, marginBottom: DS.spacing.sm }]}>
+              {currentNote ? currentNote.note : '—'}
+            </Text>
+            <Text style={[DS.typography.caption1, { color: DS.colors.text.secondary, marginBottom: DS.spacing.lg }]}>
+              Note {currentNoteIndex + 1} of {selectedExercise.notes?.length || 0}
+            </Text>
+
+            <View style={styles.detectionInfo}>
+              <Text style={[DS.typography.body, { color: DS.colors.text.secondary }]}>
+                Detected: {detectedNote}
+              </Text>
+              <Text style={[DS.typography.body, { color: DS.colors.text.secondary }]}>
+                {detectedFrequency.toFixed(1)} Hz
+              </Text>
+              <Text style={[DS.typography.body, { color: DS.colors.text.secondary }]}>
+                Confidence: {(confidence * 100).toFixed(0)}%
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Visualizer */}
+        {isRunning && currentNote && selectedExercise.notes && (
+          <View style={styles.visualizerContainer}>
+            <PitchScaleVisualizer
+              notes={selectedExercise.notes}
+              targetNote={currentNote}
+              detectedFrequency={detectedFrequency}
+              confidence={confidence}
+            />
+          </View>
+        )}
+
+      </ScrollView>
+
+      {/* Floating Action Button (FAB) - Always visible, no scrolling needed */}
+      {!isRunning && (
+        <View style={styles.fabContainer}>
+          <TouchableOpacity
+            onPress={startExercise}
+            disabled={!isReady}
+            style={[styles.fab, !isReady && styles.fabDisabled]}
+            activeOpacity={0.8}
+          >
+            <View style={styles.fabContent}>
+              <Text style={[styles.fabLabel, DS.typography.caption1, { color: DS.colors.text.secondary }]}>
+                {selectedExercise.name}
+              </Text>
+              <Text style={[styles.fabButton, DS.typography.headline, { color: DS.colors.text.primary }]}>
+                {isReady ? '▶ Start Exercise' : '⏳ Initializing...'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Stop Button (appears during exercise) */}
+      {isRunning && (
+        <View style={styles.fabContainer}>
+          <TouchableOpacity
+            onPress={stopExercise}
+            style={[styles.fab, styles.fabStop]}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.fabButton, DS.typography.headline, { color: DS.colors.text.primary }]}>
+              ■ Stop Exercise
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: DS.spacing.xl,
+    paddingTop: 60,
+    paddingBottom: 120, // Extra padding to ensure content doesn't hide behind FAB
+  },
+  title: {
+    marginBottom: DS.spacing.xs,
+  },
+  subtitle: {
+    marginBottom: DS.spacing.xxxl,
+  },
+  exerciseSelector: {
+    marginBottom: DS.spacing.xxxl,
+  },
+  exerciseOption: {
+    marginBottom: DS.spacing.md,
+  },
+  exerciseCard: {
+    backgroundColor: DS.colors.background.secondary,
+    borderRadius: DS.radius.lg,
+    padding: DS.spacing.xl,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  exerciseCardSelected: {
+    borderColor: DS.colors.accent.primary,
+    backgroundColor: DS.colors.background.tertiary,
+  },
+  exerciseCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: DS.spacing.md,
+  },
+  exerciseTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: DS.spacing.md,
+  },
+  exerciseCheckmark: {
+    ...DS.typography.headline,
+    color: DS.colors.accent.primary,
+    fontWeight: '700',
+    marginRight: DS.spacing.xs,
+  },
+  exerciseName: {
+    flex: 1,
+  },
+  exerciseDesc: {
+    marginBottom: DS.spacing.md,
+  },
+  exerciseMetadata: {
+    flexDirection: 'row',
+    gap: DS.spacing.md,
+    flexWrap: 'wrap',
+  },
+  exerciseMetadataText: {
+    // No additional styles needed
+  },
+  difficultyBadge: {
+    paddingHorizontal: DS.spacing.md,
+    paddingVertical: DS.spacing.xs,
+    borderRadius: DS.radius.full,
+  },
+  difficultyBadgeBeginner: {
+    backgroundColor: DS.colors.accent.success + '20', // 20% opacity
+  },
+  difficultyBadgeIntermediate: {
+    backgroundColor: DS.colors.accent.warning + '20', // 20% opacity
+  },
+  difficultyBadgeAdvanced: {
+    backgroundColor: DS.colors.accent.error + '20', // 20% opacity
+  },
+  difficultyBadgeText: {
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  statusCard: {
+    backgroundColor: DS.colors.background.secondary,
+    borderRadius: DS.radius.lg,
+    padding: DS.spacing.xl,
+    marginBottom: DS.spacing.xl,
+    alignItems: 'center',
+  },
+  detectionInfo: {
+    width: '100%',
+    gap: DS.spacing.xs,
+  },
+  visualizerContainer: {
+    marginBottom: DS.spacing.xl,
+  },
+  controls: {
+    marginTop: DS.spacing.lg,
+  },
+  buttonWrapper: {
+    marginBottom: DS.spacing.md,
+  },
+  button: {
+    backgroundColor: DS.colors.accent.primary,
+    borderRadius: DS.radius.lg,
+    paddingVertical: DS.spacing.lg,
+    paddingHorizontal: DS.spacing.xl,
+    alignItems: 'center',
+    ...DS.shadows.md,
+  },
+  buttonDisabled: {
+    backgroundColor: DS.colors.background.tertiary,
+    opacity: 0.5,
+  },
+  buttonText: {
+    ...DS.typography.headline,
+    color: DS.colors.text.primary,
+    fontWeight: '600',
+  },
+  resultsCard: {
+    backgroundColor: DS.colors.background.secondary,
+    borderRadius: DS.radius.lg,
+    padding: DS.spacing.xl,
+    marginBottom: DS.spacing.xl,
+  },
+  scoreText: {
+    fontSize: 64,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: DS.spacing.xs,
+  },
+  scoreLabel: {
+    textAlign: 'center',
+    marginBottom: DS.spacing.xl,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: DS.colors.background.tertiary,
+    marginVertical: DS.spacing.xl,
+  },
+  sectionTitle: {
+    marginBottom: DS.spacing.md,
+  },
+  noteResultRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: DS.spacing.sm,
+  },
+  noteText: {
+    fontWeight: '600',
+  },
+  feedbackText: {
+    marginBottom: DS.spacing.sm,
+  },
+  celebrationTitle: {
+    textAlign: 'center',
+    marginBottom: DS.spacing.xl,
+  },
+  encouragingText: {
+    textAlign: 'center',
+    marginTop: DS.spacing.md,
+    marginBottom: DS.spacing.lg,
+    lineHeight: 24,
+  },
+  improvementText: {
+    textAlign: 'center',
+    marginTop: DS.spacing.md,
+    paddingHorizontal: DS.spacing.lg,
+    lineHeight: 20,
+  },
+
+  // Floating Action Button (FAB) styles
+  fabContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: DS.spacing.xl,
+    paddingBottom: DS.spacing.xxxl,
+    pointerEvents: 'box-none', // Allow touches to pass through container
+  },
+  fab: {
+    backgroundColor: DS.colors.accent.primary,
+    borderRadius: DS.radius.xl,
+    paddingVertical: DS.spacing.lg,
+    paddingHorizontal: DS.spacing.xxl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...DS.shadows.xl, // Extra large shadow for floating effect
+  },
+  fabDisabled: {
+    backgroundColor: DS.colors.background.tertiary,
+    opacity: 0.6,
+  },
+  fabStop: {
+    backgroundColor: DS.colors.accent.error,
+  },
+  fabContent: {
+    alignItems: 'center',
+    gap: DS.spacing.xs,
+  },
+  fabLabel: {
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontWeight: '600',
+  },
+  fabButton: {
+    fontWeight: '700',
+  },
+});

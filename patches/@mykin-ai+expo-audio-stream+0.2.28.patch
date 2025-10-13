@@ -1,0 +1,11 @@
+diff --git a/node_modules/@mykin-ai/expo-audio-stream/ios/AudioUtils.swift b/node_modules/@mykin-ai/expo-audio-stream/ios/AudioUtils.swift
+index 795558e..283148b 100644
+--- a/node_modules/@mykin-ai/expo-audio-stream/ios/AudioUtils.swift
++++ b/node_modules/@mykin-ai/expo-audio-stream/ios/AudioUtils.swift
+@@ -1,5 +1,6 @@
+ import AVFoundation
+ import ExpoModulesCore
++import Accelerate
+ 
+ public enum SoundPlayerError: Error {
+     case invalidBase64String

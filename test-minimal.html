@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PitchPerfect - Minimal Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            background: #FFFFFF;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        #container {
+            text-align: center;
+            position: relative;
+        }
+
+        #breathingCircle {
+            position: absolute;
+            width: 280px;
+            height: 280px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.02);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: breathe 4s ease-in-out infinite;
+            transition: background-color 0.3s ease;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+        }
+
+        #noteDisplay {
+            font-size: 120px;
+            font-weight: 100;
+            letter-spacing: -3px;
+            color: #000;
+            transition: color 0.2s ease;
+            margin-bottom: 20px;
+        }
+
+        #feedbackText {
+            font-size: 17px;
+            font-weight: 500;
+            color: #8E8E93;
+            height: 25px;
+        }
+
+        #accuracyBar {
+            width: 200px;
+            height: 2px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 1px;
+            margin: 30px auto 0;
+            overflow: hidden;
+        }
+
+        #accuracyFill {
+            height: 100%;
+            width: 0%;
+            background: #30D158;
+            transition: width 0.2s ease, background-color 0.2s ease;
+        }
+
+        #status {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #30D158;
+            opacity: 0;
+        }
+
+        #status.active {
+            opacity: 1;
+        }
+
+        #hint {
+            position: fixed;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #C7C7CC;
+        }
+
+        .listening #hint {
+            display: none;
+        }
+
+        #errorMsg {
+            position: fixed;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #FF3B30;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="status">●</div>
+        <div id="breathingCircle"></div>
+        <div id="noteDisplay">—</div>
+        <div id="feedbackText">Tap to begin</div>
+        <div id="accuracyBar">
+            <div id="accuracyFill"></div>
+        </div>
+        <div id="hint">Testing pitch detection</div>
+        <div id="errorMsg"></div>
+    </div>
+
+    <script>
+        let isListening = false;
+        let audioContext = null;
+        let analyser = null;
+        let microphone = null;
+        let animationId = null;
+        let stream = null;
+
+        // Simple pitch detection
+        function detectPitch(buffer, sampleRate) {
+            const minFreq = 80;
+            const maxFreq = 1000;
+
+            // Find the peak in autocorrelation
+            let maxCorrelation = 0;
+            let bestOffset = -1;
+
+            for (let offset = Math.floor(sampleRate / maxFreq); offset < Math.floor(sampleRate / minFreq); offset++) {
+                let correlation = 0;
+
+                for (let i = 0; i < buffer.length - offset; i++) {
+                    correlation += Math.abs(buffer[i] * buffer[i + offset]);
+                }
+
+                if (correlation > maxCorrelation) {
+                    maxCorrelation = correlation;
+                    bestOffset = offset;
+                }
+            }
+
+            const frequency = sampleRate / bestOffset;
+
+            if (frequency > minFreq && frequency < maxFreq && maxCorrelation > 0.01) {
+                return frequency;
+            }
+
+            return null;
+        }
+
+        function frequencyToNote(frequency) {
+            const A4 = 440;
+            const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+            const halfSteps = 12 * Math.log2(frequency / A4);
+            const noteIndex = Math.round(halfSteps + 69) % 12;
+            const octave = Math.floor((Math.round(halfSteps + 69)) / 12) - 1;
+            const cents = Math.round((halfSteps - Math.round(halfSteps)) * 100);
+
+            return {
+                note: noteNames[noteIndex] + octave,
+                cents: cents
+            };
+        }
+
+        async function startListening() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 4096;
+                analyser.smoothingTimeConstant = 0.8;
+
+                microphone = audioContext.createMediaStreamSource(stream);
+                microphone.connect(analyser);
+
+                isListening = true;
+                document.body.classList.add('listening');
+                document.getElementById('status').classList.add('active');
+                document.getElementById('feedbackText').textContent = '';
+
+                detectPitchContinuously();
+            } catch (error) {
+                console.error('Microphone error:', error);
+                document.getElementById('errorMsg').textContent = 'Please allow microphone access';
+                document.getElementById('errorMsg').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('errorMsg').style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        function detectPitchContinuously() {
+            if (!isListening) return;
+
+            const bufferLength = analyser.fftSize;
+            const dataArray = new Float32Array(bufferLength);
+
+            analyser.getFloatTimeDomainData(dataArray);
+
+            const frequency = detectPitch(dataArray, audioContext.sampleRate);
+
+            if (frequency) {
+                const noteInfo = frequencyToNote(frequency);
+                document.getElementById('noteDisplay').textContent = noteInfo.note;
+
+                // Color based on accuracy
+                const accuracy = Math.max(0, 1 - Math.abs(noteInfo.cents) / 50);
+                const noteDisplay = document.getElementById('noteDisplay');
+                const accuracyFill = document.getElementById('accuracyFill');
+                const circle = document.getElementById('breathingCircle');
+
+                if (accuracy > 0.95) {
+                    noteDisplay.style.color = '#30D158'; // Green
+                    accuracyFill.style.backgroundColor = '#30D158';
+                    circle.style.backgroundColor = 'rgba(48, 209, 88, 0.05)';
+                    document.getElementById('feedbackText').textContent = 'Perfect pitch!';
+                } else if (accuracy > 0.8) {
+                    noteDisplay.style.color = '#32C759';
+                    accuracyFill.style.backgroundColor = '#32C759';
+                    circle.style.backgroundColor = 'rgba(50, 199, 89, 0.05)';
+                    document.getElementById('feedbackText').textContent = 'Great!';
+                } else if (accuracy > 0.6) {
+                    noteDisplay.style.color = '#FF9500'; // Yellow
+                    accuracyFill.style.backgroundColor = '#FF9500';
+                    circle.style.backgroundColor = 'rgba(255, 149, 0, 0.05)';
+                    document.getElementById('feedbackText').textContent = 'Getting closer';
+                } else {
+                    noteDisplay.style.color = '#FF3B30'; // Red
+                    accuracyFill.style.backgroundColor = '#FF3B30';
+                    circle.style.backgroundColor = 'rgba(255, 59, 48, 0.05)';
+                    document.getElementById('feedbackText').textContent = '';
+                }
+
+                accuracyFill.style.width = (accuracy * 100) + '%';
+            }
+
+            animationId = requestAnimationFrame(detectPitchContinuously);
+        }
+
+        function stopListening() {
+            isListening = false;
+            document.body.classList.remove('listening');
+            document.getElementById('status').classList.remove('active');
+            document.getElementById('noteDisplay').textContent = '—';
+            document.getElementById('feedbackText').textContent = 'Tap to begin';
+            document.getElementById('accuracyFill').style.width = '0%';
+            document.getElementById('noteDisplay').style.color = '#000';
+            document.getElementById('breathingCircle').style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+
+            if (microphone) {
+                microphone.disconnect();
+            }
+
+            if (audioContext) {
+                audioContext.close();
+            }
+
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        // Click to start/stop
+        document.body.addEventListener('click', () => {
+            if (isListening) {
+                stopListening();
+            } else {
+                startListening();
+            }
+        });
+
+        // Test that JavaScript is working
+        console.log('PitchPerfect Minimal Test - Ready');
+        document.getElementById('feedbackText').textContent = 'Tap to begin - Test Version';
+    </script>
+</body>
+</html>
