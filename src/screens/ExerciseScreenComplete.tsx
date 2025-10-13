@@ -204,7 +204,10 @@ export const ExerciseScreenComplete: React.FC = () => {
       const sampleRate = audioService.getSampleRate();
       pitchDetectorRef.current = new YINPitchDetector(sampleRate, 2048, 0.1);
 
-      console.log('✅ Audio initialized');
+      console.log('✅ Audio initialized', {
+        initialSampleRate: sampleRate,
+        pitchDetectorReady: !!pitchDetectorRef.current
+      });
       setIsReady(true);
     } catch (error) {
       console.error('❌ Audio initialization failed:', error);
@@ -314,6 +317,13 @@ export const ExerciseScreenComplete: React.FC = () => {
         console.log(`📍 Note ${index + 1}: ${note.note}`);
         setCurrentNoteIndex(index);
         setCurrentNote(note);
+
+        // CRITICAL FIX: Update pitch detector with actual sample rate after recording starts
+        // This ensures iOS's 48000 Hz is used instead of requested 44100 Hz
+        if (index === 0 && audioServiceRef.current && pitchDetectorRef.current) {
+          const actualSampleRate = audioServiceRef.current.getSampleRate();
+          pitchDetectorRef.current.updateSampleRate(actualSampleRate);
+        }
       });
 
       engine.setOnPitchDetected((frequency, note, accuracyValue, confidenceValue) => {
