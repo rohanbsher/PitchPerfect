@@ -20,6 +20,7 @@ import { PitchScaleVisualizer } from '../components/PitchScaleVisualizer';
 import { CelebrationConfetti } from '../components/CelebrationConfetti';
 import { BreathingVisualizer } from '../components/BreathingVisualizer'; // NEW
 import { PitchHistoryGraph } from '../components/analytics/PitchHistoryGraph';
+import { SessionStatsCards } from '../components/analytics/SessionStatsCards';
 import { usePitchHistory } from '../hooks/usePitchHistory';
 import { DesignSystem as DS } from '../design/DesignSystem';
 import { AudioServiceFactory } from '../services/audio/AudioServiceFactory';
@@ -483,6 +484,11 @@ export const ExerciseScreenComplete: React.FC = () => {
               maxBars={30}
               height={140}
             />
+          )}
+
+          {/* Session Stats Cards - Key performance metrics */}
+          {selectedExercise.type === 'vocal' && pitchHistory.stats.totalReadings > 0 && (
+            <SessionStatsCards stats={pitchHistory.stats} />
           )}
 
           <View style={styles.resultsCard}>
