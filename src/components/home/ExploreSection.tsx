@@ -30,26 +30,10 @@ export const ExploreSection: React.FC<ExploreSectionProps> = ({
   onSelectExercise,
   selectedExerciseId,
 }) => {
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    // Animate arrow rotation
-    Animated.timing(rotateAnim, {
-      toValue: isExpanded ? 1 : 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [isExpanded]);
-
   const handleToggle = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     onToggle();
   };
-
-  const arrowRotation = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '90deg'],
-  });
 
   // Group exercises by category
   const breathingExercises = exercises.filter(e => e.type === 'breathing');
@@ -63,10 +47,11 @@ export const ExploreSection: React.FC<ExploreSectionProps> = ({
         onPress={handleToggle}
         activeOpacity={0.7}
       >
-        <Text style={styles.headerText}>Explore More</Text>
-        <Animated.Text style={[styles.arrow, { transform: [{ rotate: arrowRotation }] }]}>
-          →
-        </Animated.Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerText}>Browse All Exercises</Text>
+          <Text style={styles.headerSubtext}>View complete exercise library</Text>
+        </View>
+        <Text style={styles.dots}>···</Text>
       </TouchableOpacity>
 
       {/* Expanded content */}
@@ -130,13 +115,19 @@ const styles = StyleSheet.create({
     borderTopColor: DS.colors.background.tertiary,
   },
   headerText: {
-    ...DS.typography.headline,
-    color: DS.colors.text.secondary,
+    ...DS.typography.callout,
+    color: DS.colors.text.tertiary,
     fontWeight: '600',
   },
-  arrow: {
-    ...DS.typography.title3,
+  headerSubtext: {
+    ...DS.typography.caption1,
     color: DS.colors.text.tertiary,
+    marginTop: DS.spacing.xxs,
+  },
+  dots: {
+    ...DS.typography.title2,
+    color: DS.colors.text.tertiary,
+    opacity: 0.5,
   },
 
   // Content (expandable)

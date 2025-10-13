@@ -15,7 +15,6 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 interface HeroCardProps {
   exercise: Exercise;
   onStart: () => void;
-  onStartSession?: () => void; // NEW: Flow Mode
   reasonText: string;
   isReady: boolean;
 }
@@ -23,7 +22,6 @@ interface HeroCardProps {
 export const HeroCard: React.FC<HeroCardProps> = ({
   exercise,
   onStart,
-  onStartSession,
   reasonText,
   isReady,
 }) => {
@@ -96,7 +94,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
       {/* Content overlay */}
       <View style={styles.content}>
         {/* Label */}
-        <Text style={styles.label}>YOUR PRACTICE FOR TODAY</Text>
+        <Text style={styles.label}>Today's Lesson</Text>
 
         {/* Exercise name */}
         <Text style={styles.exerciseName}>{exercise.name}</Text>
@@ -116,8 +114,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
         {/* Description */}
         <Text style={styles.description}>{reasonText}</Text>
 
-        {/* CTA Buttons */}
-        {/* Quick Start - Single exercise */}
+        {/* Single CTA Button */}
         <TouchableOpacity
           style={[styles.ctaButton, !isReady && styles.ctaButtonDisabled]}
           onPress={onStart}
@@ -125,22 +122,9 @@ export const HeroCard: React.FC<HeroCardProps> = ({
           activeOpacity={0.8}
         >
           <Text style={styles.ctaButtonText}>
-            {isReady ? '▶ QUICK START' : '⏳ Initializing...'}
+            {isReady ? 'Start Today\'s Lesson' : '⏳ Preparing...'}
           </Text>
         </TouchableOpacity>
-
-        {/* Flow Mode - Full session */}
-        {onStartSession && isReady && (
-          <TouchableOpacity
-            style={[styles.sessionButton]}
-            onPress={onStartSession}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.sessionButtonText}>
-              🎯 START SESSION (15 min)
-            </Text>
-          </TouchableOpacity>
-        )}
       </View>
     </View>
   );

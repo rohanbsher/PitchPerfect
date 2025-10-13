@@ -33,6 +33,7 @@ import { Header } from '../components/home/Header';
 import { Greeting } from '../components/home/Greeting';
 import { HeroCard } from '../components/home/HeroCard';
 import { ExploreSection } from '../components/home/ExploreSection';
+import { JourneyProgress } from '../components/home/JourneyProgress';
 import { ExercisePreview } from './ExercisePreview';
 
 // NEW: Import recommendation system
@@ -50,6 +51,7 @@ import {
   getMotivationalSubtext,
   getRecommendationReasonText,
 } from '../services/recommendationEngine';
+import { getCurrentWeek } from '../data/curriculum';
 
 // NEW: Import session context for Flow Mode
 import {
@@ -858,11 +860,18 @@ export const ExerciseScreenComplete: React.FC = () => {
             subtextText={subtextText}
           />
 
+          {/* Journey Progress */}
+          {userProgress && (
+            <JourneyProgress
+              currentWeek={getCurrentWeek(userProgress.startDate)}
+              daysThisWeek={todaysExercises.length}
+            />
+          )}
+
           {/* Hero Card - Main recommendation */}
           <HeroCard
             exercise={recommendedExercise}
             onStart={handleQuickStart}
-            onStartSession={handleStartSession}
             reasonText={reasonText}
             isReady={isReady}
           />
