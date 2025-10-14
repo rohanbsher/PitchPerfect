@@ -19,25 +19,36 @@ export const JourneyProgress: React.FC<JourneyProgressProps> = ({
   currentWeek,
   daysThisWeek,
 }) => {
+  // Validate inputs
+  const safeWeek = Math.min(Math.max(currentWeek, 1), 8);
+  const safeDays = Math.max(daysThisWeek, 0);
+
   // Get current week data
-  const week: Week = curriculum[currentWeek - 1];
-  const progressPercentage = (daysThisWeek / week.daysPerWeek) * 100;
+  const week: Week = curriculum[safeWeek - 1];
+
+  // Safety check for week data
+  if (!week) {
+    console.error('❌ JourneyProgress: Invalid week data for week', safeWeek);
+    return null;
+  }
+
+  const progressPercentage = Math.min((safeDays / week.daysPerWeek) * 100, 100);
 
   // Get week status emoji
   const getWeekStatusEmoji = (): string => {
-    if (daysThisWeek === 0) return '🎯';
-    if (daysThisWeek >= week.daysPerWeek) return '✅';
+    if (safeDays === 0) return '🎯';
+    if (safeDays >= week.daysPerWeek) return '✅';
     return '🔥';
   };
 
   // Get motivational message
   const getMessage = (): string => {
-    if (daysThisWeek === 0) {
-      return `Start Week ${currentWeek}`;
-    } else if (daysThisWeek >= week.daysPerWeek) {
-      return `Week ${currentWeek} complete!`;
+    if (safeDays === 0) {
+      return `Start Week ${safeWeek}`;
+    } else if (safeDays >= week.daysPerWeek) {
+      return `Week ${safeWeek} complete!`;
     } else {
-      const remaining = week.daysPerWeek - daysThisWeek;
+      const remaining = Math.max(week.daysPerWeek - safeDays, 0);
       return `${remaining} more ${remaining === 1 ? 'day' : 'days'} this week`;
     }
   };
@@ -60,7 +71,7 @@ export const JourneyProgress: React.FC<JourneyProgressProps> = ({
         {/* Left side - Week info */}
         <View style={styles.leftContent}>
           <View style={styles.weekBadge}>
-            <Text style={styles.weekNumber}>Week {currentWeek}</Text>
+            <Text style={styles.weekNumber}>Week {safeWeek}</Text>
           </View>
           <Text style={styles.weekTitle}>{week.title}</Text>
           <Text style={styles.weekFocus}>{week.focus}</Text>
@@ -71,7 +82,7 @@ export const JourneyProgress: React.FC<JourneyProgressProps> = ({
           <Text style={styles.statusEmoji}>{getWeekStatusEmoji()}</Text>
           <Text style={styles.progressText}>{getMessage()}</Text>
           <Text style={styles.daysCount}>
-            {daysThisWeek}/{week.daysPerWeek}
+            {safeDays}/{week.daysPerWeek}
           </Text>
         </View>
       </View>

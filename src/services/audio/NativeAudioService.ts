@@ -206,6 +206,12 @@ export class NativeAudioService implements IAudioService {
   }
 
   async stopMicrophoneCapture(): Promise<void> {
+    // Defensive check: Only stop if actually capturing
+    if (!this.isCapturing && !this.recording) {
+      console.log('⏹ NativeAudioService: No active recording to stop');
+      return;
+    }
+
     console.log('🛑 NativeAudioService: Stopping microphone capture...');
 
     this.isCapturing = false;

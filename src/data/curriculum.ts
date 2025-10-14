@@ -120,16 +120,35 @@ export const curriculum: Week[] = [
 
 /**
  * Get current week based on user's start date
- * @param startDate - When user first started using the app
+ * @param createdAt - ISO date string when user first started using the app
  * @returns Current week number (1-8)
  */
-export const getCurrentWeek = (startDate: Date): number => {
-  const now = new Date();
-  const daysSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-  const weekNumber = Math.floor(daysSinceStart / 7) + 1;
+export const getCurrentWeek = (createdAt: string): number => {
+  // Safety check for undefined/null
+  if (!createdAt) {
+    console.warn('⚠️ getCurrentWeek: createdAt is undefined, defaulting to Week 1');
+    return 1;
+  }
 
-  // Cap at week 8 (after that, users are in "mastery mode")
-  return Math.min(weekNumber, 8);
+  try {
+    const startDate = new Date(createdAt);
+    const now = new Date();
+
+    // Validate date conversion
+    if (isNaN(startDate.getTime())) {
+      console.warn('⚠️ getCurrentWeek: Invalid date string, defaulting to Week 1');
+      return 1;
+    }
+
+    const daysSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const weekNumber = Math.floor(daysSinceStart / 7) + 1;
+
+    // Cap at week 8 (after that, users are in "mastery mode")
+    return Math.min(Math.max(weekNumber, 1), 8);
+  } catch (error) {
+    console.error('❌ getCurrentWeek: Error calculating week', error);
+    return 1;
+  }
 };
 
 /**

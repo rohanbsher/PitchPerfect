@@ -861,9 +861,9 @@ export const ExerciseScreenComplete: React.FC = () => {
           />
 
           {/* Journey Progress */}
-          {userProgress && (
+          {userProgress && userProgress.createdAt && (
             <JourneyProgress
-              currentWeek={getCurrentWeek(userProgress.startDate)}
+              currentWeek={getCurrentWeek(userProgress.createdAt)}
               daysThisWeek={todaysExercises.length}
             />
           )}
