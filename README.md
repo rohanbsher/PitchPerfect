@@ -122,8 +122,75 @@ The app uses the YIN algorithm for pitch detection, which provides:
 - AudioWorklet for thread-isolated processing
 - WebGL-accelerated visualizations
 
+## Deployment & Distribution
+
+### iOS App Store Deployment
+
+PitchPerfect is production-ready and configured for iOS App Store submission.
+
+**Quick Start Deployment:**
+
+```bash
+# 1. Install EAS CLI
+npm install -g eas-cli
+
+# 2. Login to Expo
+eas login
+
+# 3. Initialize EAS project
+eas init
+
+# 4. Update configuration files with your details:
+# - eas.json (Apple ID, Team ID)
+# - app.json (EAS project ID, owner)
+
+# 5. Build for App Store
+eas build --platform ios --profile production
+
+# 6. Submit to App Store
+eas submit --platform ios --profile production
+```
+
+**Detailed Instructions:**
+- See [APP_STORE_SUBMISSION.md](./APP_STORE_SUBMISSION.md) for complete step-by-step guide
+- Review [APP_STORE_METADATA.md](./APP_STORE_METADATA.md) for all App Store listing content
+- Read [PRIVACY_POLICY.md](./PRIVACY_POLICY.md) for privacy policy (host this online)
+
+**Pre-Submission Checklist:**
+- [ ] Update bundle identifier in `app.json` (currently: com.pitchperfect.app)
+- [ ] Configure EAS project ID in `app.json`
+- [ ] Update Apple credentials in `eas.json`
+- [ ] Host privacy policy online
+- [ ] Prepare screenshots (see APP_STORE_METADATA.md)
+- [ ] Test on physical iOS device
+- [ ] Run `eas build --platform ios --profile production`
+- [ ] Submit via `eas submit` or manually via App Store Connect
+
+**Build Profiles:**
+- `development`: Development builds with dev client
+- `preview`: Internal testing builds
+- `production`: App Store release builds
+- `production-simulator`: Simulator builds for testing production config
+
+### Local Development Build
+
+```bash
+# iOS Development (requires Mac)
+npm run ios
+
+# Or with Expo CLI
+npx expo run:ios
+
+# Android Development
+npm run android
+
+# Web Development
+npm run web
+```
+
 ## Future Enhancements
 
+- [ ] TestFlight beta testing program
 - [ ] Web version with Web Audio API
 - [ ] CREPE neural network integration for improved accuracy
 - [ ] Multi-user sessions for ensemble practice
@@ -132,6 +199,7 @@ The app uses the YIN algorithm for pitch detection, which provides:
 - [ ] Music theory lessons integration
 - [ ] Social features and leaderboards
 - [ ] Export recordings as audio files
+- [ ] Additional language localizations
 
 ## Technical Specifications
 
@@ -143,9 +211,14 @@ The app uses the YIN algorithm for pitch detection, which provides:
 - **Accuracy**: ±5 cents for strong signals
 
 ### Supported Platforms:
-- iOS 13.0+
-- Android 5.0+
+- iOS 15.1+ (iPhone and iPad)
+- Android 5.0+ (future)
 - Modern web browsers (Chrome, Safari, Firefox)
+
+### Distribution:
+- **iOS**: App Store ready with EAS Build configuration
+- **Bundle ID**: com.pitchperfect.app
+- **Privacy**: All audio processing is local, no data collection
 
 ## Contributing
 
