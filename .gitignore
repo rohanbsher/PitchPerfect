@@ -37,5 +37,11 @@ yarn-error.*
 *.tsbuildinfo
 
 # generated native folders
-/ios
+# Keep ios/ for native modules
 /android
+
+# iOS build artifacts (but keep source)
+ios/build/
+ios/Pods/
+ios/.xcode.env.local
+ios/DerivedData/
