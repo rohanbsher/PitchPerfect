@@ -1,0 +1,38 @@
+{
+  "cli": {
+    "version": ">= 5.9.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
+      }
+    },
+    "production": {
+      "ios": {
+        "bundleIdentifier": "com.rohanbhandari.pitchperfect",
+        "buildConfiguration": "Release"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "rohanbsher@gmail.com",
+        "ascAppId": "PLACEHOLDER_WILL_BE_FILLED_AFTER_APP_STORE_CONNECT_SETUP",
+        "appleTeamId": "PLACEHOLDER_WILL_BE_FILLED_DURING_BUILD"
+      }
+    }
+  }
+}

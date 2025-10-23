@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.pitchperfect",
+      "bundleIdentifier": "com.rohanbhandari.pitchperfect",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "PitchPerfect needs microphone access to analyze your singing pitch and provide real-time vocal coaching feedback.",
         "UIBackgroundModes": ["audio"]
@@ -27,7 +27,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.yourcompany.pitchperfect",
+      "package": "com.rohanbhandari.pitchperfect",
       "permissions": [
         "RECORD_AUDIO"
       ]
