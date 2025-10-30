@@ -18,7 +18,6 @@
     },
     "production": {
       "ios": {
-        "bundleIdentifier": "com.rohanbhandari.pitchperfect",
         "buildConfiguration": "Release"
       },
       "android": {
@@ -30,8 +29,8 @@
     "production": {
       "ios": {
         "appleId": "rohanbsher@gmail.com",
-        "ascAppId": "PLACEHOLDER_WILL_BE_FILLED_AFTER_APP_STORE_CONNECT_SETUP",
-        "appleTeamId": "PLACEHOLDER_WILL_BE_FILLED_DURING_BUILD"
+        "ascAppId": "6754607632",
+        "appleTeamId": "NYMNM2UCQ8"
       }
     }
   }
