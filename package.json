@@ -7,8 +7,7 @@
     "start:dev": "expo start --web --port 8082 --dev --clear",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web --port 8082",
-    "postinstall": "patch-package"
+    "web": "expo start --web --port 8082"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -32,6 +31,7 @@
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "^5.6.1",
     "react-native-web": "^0.21.0",
+    "react-native-worklets": "^0.5.2",
     "tone": "^15.1.22"
   },
   "devDependencies": {
