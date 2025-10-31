@@ -8,7 +8,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web --port 8082",
-    "postinstall": "patch-package"
+    "eas-build-post-install": "npx patch-package"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -39,21 +39,6 @@
   "devDependencies": {
     "@types/react": "~19.1.0",
     "typescript": "~5.9.2"
-  },
-  "overrides": {
-    "@mykin-ai/expo-audio-stream": {
-      "scripts": {
-        "build": "expo-module build",
-        "clean": "expo-module clean",
-        "lint": "expo-module lint",
-        "test": "expo-module test",
-        "prepare": "expo-module prepare",
-        "prepublishOnly": "expo-module prepublishOnly",
-        "expo-module": "expo-module",
-        "open:ios": "open -a \"Xcode\" example/ios",
-        "open:android": "open -a \"Android Studio\" example/android"
-      }
-    }
   },
   "private": true
 }
