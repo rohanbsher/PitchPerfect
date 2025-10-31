@@ -9,3 +9,15 @@ index 795558e..283148b 100644
  
  public enum SoundPlayerError: Error {
      case invalidBase64String
+diff --git a/node_modules/@mykin-ai/expo-audio-stream/package.json b/node_modules/@mykin-ai/expo-audio-stream/package.json
+index 1234567..89abcdef 100644
+--- a/node_modules/@mykin-ai/expo-audio-stream/package.json
++++ b/node_modules/@mykin-ai/expo-audio-stream/package.json
+@@ -11,7 +11,6 @@
+     "lint": "expo-module lint",
+     "test": "expo-module test",
+     "prepare": "expo-module prepare",
+-    "postinstall": "husky",
+     "prepublishOnly": "expo-module prepublishOnly",
+     "expo-module": "expo-module",
+     "open:ios": "open -a \"Xcode\" example/ios",
