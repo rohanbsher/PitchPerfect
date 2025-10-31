@@ -22,6 +22,9 @@
       },
       "android": {
         "buildType": "apk"
+      },
+      "hooks": {
+        "postInstall": "npx patch-package"
       }
     }
   },
