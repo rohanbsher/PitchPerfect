@@ -17,12 +17,6 @@
       }
     },
     "production": {
-      "env": {
-        "NPM_CONFIG_IGNORE_SCRIPTS": "true"
-      },
-      "hooks": {
-        "postInstall": "npx patch-package"
-      },
       "ios": {
         "buildConfiguration": "Release"
       },
