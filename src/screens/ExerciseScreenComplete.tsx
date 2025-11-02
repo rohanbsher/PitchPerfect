@@ -65,6 +65,10 @@ import {
   PracticeSession,
 } from '../services/sessionContext';
 
+// AI Vocal Coach imports
+import { generateVocalCoachFeedback, VocalCoachFeedback, isVocalCoachAvailable } from '../services/ai/vocalCoachService';
+import { AICoachCard } from '../components/results/AICoachCard';
+
 export const ExerciseScreenComplete: React.FC = () => {
   // Audio state
   const [isReady, setIsReady] = useState(false);
@@ -94,6 +98,11 @@ export const ExerciseScreenComplete: React.FC = () => {
   const [showPreview, setShowPreview] = useState(false); // Show exercise preview before starting
   const [countdownActive, setCountdownActive] = useState(false); // Pre-exercise countdown
   const [countdownSeconds, setCountdownSeconds] = useState(3); // 3, 2, 1
+
+  // AI Vocal Coach state
+  const [aiCoachFeedback, setAiCoachFeedback] = useState<VocalCoachFeedback | null>(null);
+  const [aiCoachLoading, setAiCoachLoading] = useState(false);
+  const [aiCoachError, setAiCoachError] = useState<string | undefined>(undefined);
 
   // Exercise state
   const allExercises = [...breathingExercises, ...scaleExercises];
@@ -239,6 +248,48 @@ export const ExerciseScreenComplete: React.FC = () => {
     }
   };
 
+  // Generate AI Vocal Coach feedback
+  const generateAIFeedback = async (exerciseResults: ExerciseResults) => {
+    // Only generate for vocal exercises
+    if (selectedExercise.type !== 'vocal') {
+      return;
+    }
+
+    // Check if API key is available
+    if (!isVocalCoachAvailable()) {
+      console.log('⚠️ AI Vocal Coach not available (no API key)');
+      setAiCoachError('AI Coach requires an API key. See setup instructions.');
+      return;
+    }
+
+    try {
+      setAiCoachLoading(true);
+      setAiCoachError(undefined);
+
+      const feedback = await generateVocalCoachFeedback(
+        selectedExercise.name,
+        exerciseResults.noteResults,
+        exerciseResults.overallAccuracy,
+        Date.now() - (exerciseResults.completedAt?.getTime() || Date.now())
+      );
+
+      setAiCoachFeedback(feedback);
+      console.log('✅ AI Coach feedback generated', feedback);
+    } catch (error) {
+      console.error('❌ Failed to generate AI feedback:', error);
+      setAiCoachError('Failed to generate AI feedback. Please try again.');
+    } finally {
+      setAiCoachLoading(false);
+    }
+  };
+
+  // Regenerate AI feedback with different insights
+  const regenerateAIFeedback = () => {
+    if (results) {
+      generateAIFeedback(results);
+    }
+  };
+
   // NEW: Wrapper that shows countdown first
   const startExercise = () => {
     // Start countdown (3, 2, 1)
@@ -253,6 +304,11 @@ export const ExerciseScreenComplete: React.FC = () => {
     setCurrentNoteIndex(0);
     setCurrentNote(null);
     pitchHistory.clearHistory(); // Reset history for new exercise
+
+    // Reset AI Coach state
+    setAiCoachFeedback(null);
+    setAiCoachLoading(false);
+    setAiCoachError(undefined);
 
     // BREATHING EXERCISE
     if (selectedExercise.type === 'breathing') {
@@ -381,6 +437,9 @@ export const ExerciseScreenComplete: React.FC = () => {
         console.log('🎉 Exercise completed!', exerciseResults);
         setIsRunning(false);
         setResults(exerciseResults);
+
+        // Generate AI Vocal Coach feedback
+        generateAIFeedback(exerciseResults);
 
         // NEW: Save to AsyncStorage
         await saveCompletedExercise(
@@ -577,6 +636,16 @@ export const ExerciseScreenComplete: React.FC = () => {
           {/* Session Stats Cards - Key performance metrics */}
           {selectedExercise.type === 'vocal' && pitchHistory.stats.totalReadings > 0 && (
             <SessionStatsCards stats={pitchHistory.stats} />
+          )}
+
+          {/* AI Vocal Coach Card - Personalized feedback */}
+          {selectedExercise.type === 'vocal' && (
+            <AICoachCard
+              feedback={aiCoachFeedback}
+              loading={aiCoachLoading}
+              error={aiCoachError}
+              onRegenerate={regenerateAIFeedback}
+            />
           )}
 
           <View style={styles.resultsCard}>
