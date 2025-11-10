@@ -49,9 +49,11 @@ export const ExploreSection: React.FC<ExploreSectionProps> = ({
       >
         <View style={{ flex: 1 }}>
           <Text style={styles.headerText}>Browse All Exercises</Text>
-          <Text style={styles.headerSubtext}>View complete exercise library</Text>
+          <Text style={styles.headerSubtext}>
+            {exercises.length} professional exercises • {breathingExercises.length} breathing • {vocalExercises.length} vocal
+          </Text>
         </View>
-        <Text style={styles.dots}>···</Text>
+        <Text style={styles.dots}>{isExpanded ? '⌃' : '···'}</Text>
       </TouchableOpacity>
 
       {/* Expanded content */}

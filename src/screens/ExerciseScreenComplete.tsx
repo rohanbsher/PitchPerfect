@@ -94,7 +94,7 @@ export const ExerciseScreenComplete: React.FC = () => {
   const [autoTransitionCountdown, setAutoTransitionCountdown] = useState<number | null>(null);
 
   // NEW: UI state
-  const [isExploreExpanded, setIsExploreExpanded] = useState(false);
+  const [isExploreExpanded, setIsExploreExpanded] = useState(true); // Expanded by default to show all content
   const [showPreview, setShowPreview] = useState(false); // Show exercise preview before starting
   const [countdownActive, setCountdownActive] = useState(false); // Pre-exercise countdown
   const [countdownSeconds, setCountdownSeconds] = useState(3); // 3, 2, 1

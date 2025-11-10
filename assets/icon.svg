@@ -1,0 +1,58 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Gradient background -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8B5CF6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="micGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E0E7FF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="512" cy="512" r="512" fill="url(#bgGradient)"/>
+
+  <!-- Microphone icon -->
+  <g transform="translate(512, 512)">
+    <!-- Mic capsule -->
+    <rect x="-80" y="-280" width="160" height="240" rx="80" fill="url(#micGradient)" stroke="white" stroke-width="12"/>
+
+    <!-- Mic grille lines -->
+    <line x1="-60" y1="-240" x2="60" y2="-240" stroke="#3B82F6" stroke-width="4" opacity="0.5"/>
+    <line x1="-60" y1="-200" x2="60" y2="-200" stroke="#3B82F6" stroke-width="4" opacity="0.5"/>
+    <line x1="-60" y1="-160" x2="60" y2="-160" stroke="#3B82F6" stroke-width="4" opacity="0.5"/>
+    <line x1="-60" y1="-120" x2="60" y2="-120" stroke="#3B82F6" stroke-width="4" opacity="0.5"/>
+    <line x1="-60" y1="-80" x2="60" y2="-80" stroke="#3B82F6" stroke-width="4" opacity="0.5"/>
+
+    <!-- Mic body -->
+    <path d="M -40 -40 L -40 40 L -60 80 L 60 80 L 40 -40 Z" fill="url(#micGradient)" stroke="white" stroke-width="12"/>
+
+    <!-- Mic stand -->
+    <line x1="0" y1="80" x2="0" y2="200" stroke="white" stroke-width="16" stroke-linecap="round"/>
+
+    <!-- Mic base -->
+    <ellipse cx="0" cy="200" rx="100" ry="25" fill="white" opacity="0.9"/>
+
+    <!-- Sound waves (left side) -->
+    <path d="M -180 -160 Q -200 -160 -200 -180" stroke="white" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.8"/>
+    <path d="M -180 -160 Q -200 -160 -200 -140" stroke="white" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.8"/>
+
+    <path d="M -240 -160 Q -280 -160 -280 -200" stroke="white" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.6"/>
+    <path d="M -240 -160 Q -280 -160 -280 -120" stroke="white" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.6"/>
+
+    <!-- Sound waves (right side) -->
+    <path d="M 180 -160 Q 200 -160 200 -180" stroke="white" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.8"/>
+    <path d="M 180 -160 Q 200 -160 200 -140" stroke="white" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.8"/>
+
+    <path d="M 240 -160 Q 280 -160 280 -200" stroke="white" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.6"/>
+    <path d="M 240 -160 Q 280 -160 280 -120" stroke="white" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.6"/>
+
+    <!-- Musical note accent -->
+    <circle cx="140" cy="-300" r="35" fill="white" opacity="0.9"/>
+    <ellipse cx="140" cy="-300" rx="35" ry="25" fill="#3B82F6" opacity="0.3"/>
+    <rect x="170" y="-420" width="12" height="120" fill="white" opacity="0.9"/>
+    <path d="M 182 -420 Q 220 -400 220 -360 L 220 -340 Q 220 -380 182 -400 Z" fill="white" opacity="0.9"/>
+  </g>
+</svg>
