@@ -1,14 +1,22 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ExerciseScreenComplete } from './src/screens/ExerciseScreenComplete';
+import { NavigationContainer } from '@react-navigation/native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AudioProvider } from './src/contexts/AudioContext';
+import { TabNavigator } from './src/navigation/TabNavigator';
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" />
-      <ExerciseScreenComplete />
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AudioProvider>
+          <NavigationContainer>
+            <StatusBar style="light" />
+            <TabNavigator />
+          </NavigationContainer>
+        </AudioProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
-// Force reload
