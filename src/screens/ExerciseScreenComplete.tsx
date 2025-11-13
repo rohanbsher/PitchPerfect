@@ -750,14 +750,28 @@ export const ExerciseScreenComplete: React.FC = () => {
 
           {/* Action buttons */}
           <View style={styles.buttonRow}>
-            <View style={{ flex: 1 }} />
-            <View style={{ flex: 1, paddingLeft: DS.spacing.sm }}>
+            <View style={{ flex: 1, paddingRight: DS.spacing.xs }}>
+              <View style={[styles.button, styles.buttonSecondary]}>
+                <Text
+                  style={[styles.buttonText, { color: DS.colors.text.primary }]}
+                  onPress={() => {
+                    // Practice the same exercise again
+                    setResults(null);
+                    setAutoTransitionCountdown(null);
+                    startExercise();
+                  }}
+                >
+                  Practice Again
+                </Text>
+              </View>
+            </View>
+            <View style={{ flex: 1, paddingLeft: DS.spacing.xs }}>
               <View style={[styles.button, styles.buttonPrimary]}>
                 <Text
                   style={[styles.buttonText, { color: DS.colors.text.primary }]}
                   onPress={handleTryAgain}
                 >
-                  {activeSession && activeSession.isActive ? 'Back to Home' : 'Continue Practicing'}
+                  Back to Home
                 </Text>
               </View>
             </View>

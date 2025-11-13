@@ -70,6 +70,9 @@ export const AICoachCard: React.FC<AICoachCardProps> = ({
 
   // Error state
   if (error || !feedback) {
+    // Don't show "Try Again" for configuration errors (missing API key)
+    const isConfigError = error?.includes('API key') || error?.includes('setup');
+
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -80,7 +83,7 @@ export const AICoachCard: React.FC<AICoachCardProps> = ({
           <Text style={styles.errorText}>
             {error || 'Unable to generate feedback'}
           </Text>
-          {onRegenerate && (
+          {onRegenerate && !isConfigError && (
             <TouchableOpacity style={styles.retryButton} onPress={onRegenerate}>
               <Text style={styles.retryButtonText}>Try Again</Text>
             </TouchableOpacity>
