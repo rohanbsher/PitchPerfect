@@ -81,6 +81,6 @@ interface TabIconProps {
 
 const TabIcon: React.FC<TabIconProps> = ({ icon, size }) => {
   return (
-    <span style={{ fontSize: size }}>{icon}</span>
+    <Text style={{ fontSize: size }}>{icon}</Text>
   );
 };

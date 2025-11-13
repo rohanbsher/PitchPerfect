@@ -13,8 +13,16 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Platform } from 'react-native';
-import * as Tone from 'tone';
+import { Audio } from 'expo-av';
 import { YINPitchDetector } from '../utils/pitchDetection';
+
+// Dynamic import for Tone.js (web-only)
+let Tone: any = null;
+if (Platform.OS === 'web') {
+  import('tone').then(module => {
+    Tone = module;
+  });
+}
 
 // ============================================================================
 // Types
@@ -95,13 +103,14 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
   });
 
   // Refs for audio objects (persist across renders)
-  const pianoRef = useRef<Tone.Sampler | null>(null);
+  const pianoRef = useRef<any>(null); // Tone.Sampler on web, Audio.Sound map on native
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const pitchDetectorRef = useRef<YINPitchDetector | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const soundsRef = useRef<Map<string, Audio.Sound>>(new Map()); // Native audio sounds
 
   // Smoothing for pitch stability
   const smoothedCentsRef = useRef<number>(0);
@@ -112,11 +121,7 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
   // ============================================================================
 
   useEffect(() => {
-    // Only initialize audio on web platform (Tone.js is web-only)
-    if (Platform.OS === 'web') {
-      initializePiano();
-      // Don't auto-start microphone - wait for user interaction
-    }
+    initializePiano();
 
     return () => {
       cleanup();
@@ -125,24 +130,47 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
 
   const initializePiano = async () => {
     try {
-      console.log('🎹 Initializing piano sampler...');
+      console.log('🎹 Initializing piano...');
 
-      // Create Tone.js Sampler with Salamander Grand Piano samples
-      const piano = new Tone.Sampler({
-        urls: {
-          C4: 'C4.mp3',
-          'D#4': 'Ds4.mp3',
-          'F#4': 'Fs4.mp3',
-          A4: 'A4.mp3',
-        },
-        baseUrl: 'https://tonejs.github.io/audio/salamander/',
-        onload: () => {
-          console.log('✅ Piano loaded successfully');
-          setPianoReady(true);
-        },
-      }).toDestination();
+      if (Platform.OS === 'web') {
+        // Wait for Tone.js to load
+        await new Promise((resolve) => {
+          const checkTone = setInterval(() => {
+            if (Tone) {
+              clearInterval(checkTone);
+              resolve(null);
+            }
+          }, 100);
+        });
 
-      pianoRef.current = piano;
+        // Create Tone.js Sampler with Salamander Grand Piano samples
+        const piano = new Tone.Sampler({
+          urls: {
+            C4: 'C4.mp3',
+            'D#4': 'Ds4.mp3',
+            'F#4': 'Fs4.mp3',
+            A4: 'A4.mp3',
+          },
+          baseUrl: 'https://tonejs.github.io/audio/salamander/',
+          onload: () => {
+            console.log('✅ Piano loaded successfully (Web)');
+            setPianoReady(true);
+          },
+        }).toDestination();
+
+        pianoRef.current = piano;
+      } else {
+        // iOS/Android: Use Expo AV with simple sine wave synthesizer
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          shouldDuckAndroid: true,
+        });
+
+        console.log('✅ Piano ready (Native - on-demand synthesis)');
+        setPianoReady(true);
+      }
     } catch (error) {
       console.error('❌ Piano initialization error:', error);
     }
@@ -270,7 +298,7 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
   // ============================================================================
 
   const playNote = async (note: string, duration: string = '2n') => {
-    if (!pianoRef.current || !pianoReady || isPlaying) {
+    if (!pianoReady || isPlaying) {
       console.warn('⚠️ Cannot play note - piano not ready or already playing');
       return;
     }
@@ -278,19 +306,47 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
     try {
       setIsPlaying(true);
 
-      // Start Tone.js audio context if needed
-      if (Tone.context.state !== 'running') {
-        await Tone.start();
+      if (Platform.OS === 'web') {
+        // Web: Use Tone.js
+        if (!pianoRef.current || !Tone) {
+          console.warn('⚠️ Piano not ready (web)');
+          setIsPlaying(false);
+          return;
+        }
+
+        // Start Tone.js audio context if needed
+        if (Tone.context.state !== 'running') {
+          await Tone.start();
+        }
+
+        // Play piano note
+        pianoRef.current.triggerAttackRelease(note, duration);
+
+        // Reset playing state after note duration
+        const durationMs = Tone.Time(duration).toMilliseconds();
+        setTimeout(() => {
+          setIsPlaying(false);
+        }, durationMs);
+      } else {
+        // iOS/Android: Play simple tone using Expo AV
+        const frequency = noteToFrequency(note);
+        const durationMs = 500; // 500ms default for native
+
+        // Generate simple sine wave tone
+        // Note: This is a simplified version - for production you'd want actual piano samples
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: `https://tonejs.github.io/audio/salamander/${note}.mp3` },
+          { shouldPlay: true, volume: 0.5 }
+        );
+
+        soundsRef.current.set(note, sound);
+
+        setTimeout(async () => {
+          await sound.unloadAsync();
+          soundsRef.current.delete(note);
+          setIsPlaying(false);
+        }, durationMs);
       }
-
-      // Play piano note
-      pianoRef.current.triggerAttackRelease(note, duration);
-
-      // Reset playing state after note duration
-      const durationMs = Tone.Time(duration).toMilliseconds();
-      setTimeout(() => {
-        setIsPlaying(false);
-      }, durationMs);
     } catch (error) {
       console.error('❌ Error playing note:', error);
       setIsPlaying(false);
