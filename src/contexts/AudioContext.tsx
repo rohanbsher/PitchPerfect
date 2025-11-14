@@ -254,10 +254,17 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
             channels: 1,
             encoding: 'pcm_16bit',
             interval: intervalMs,
-            onAudioStream: (event: AudioDataEvent) => {
+            onAudioStream: async (event: AudioDataEvent) => {
               try {
-                // Convert base64 PCM to Float32Array
-                const pcmBuffer = base64ToFloat32Array(event.data, 'pcm_16bit');
+                // Handle both string (base64) and Float32Array data
+                let pcmBuffer: Float32Array;
+                if (typeof event.data === 'string') {
+                  // Convert base64 PCM to Float32Array
+                  pcmBuffer = base64ToFloat32Array(event.data, 'pcm_16bit');
+                } else {
+                  // Already Float32Array
+                  pcmBuffer = event.data;
+                }
 
                 // Process audio buffer (same as web)
                 if (pitchDetectorRef.current && pcmBuffer.length > 0) {
