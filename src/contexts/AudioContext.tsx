@@ -15,6 +15,8 @@ import React, { createContext, useContext, useState, useEffect, useRef, ReactNod
 import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { YINPitchDetector } from '../utils/pitchDetection';
+import { ExpoPlayAudioStream, AudioDataEvent } from '@mykin-ai/expo-audio-stream';
+import type { EventSubscription } from 'expo-modules-core';
 
 // Dynamic import for Tone.js (web-only)
 let Tone: any = null;
@@ -111,6 +113,7 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
   const pitchDetectorRef = useRef<YINPitchDetector | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const soundsRef = useRef<Map<string, Audio.Sound>>(new Map()); // Native audio sounds
+  const audioSubscriptionRef = useRef<EventSubscription | null>(null); // Native audio stream
 
   // Smoothing for pitch stability
   const smoothedCentsRef = useRef<number>(0);
@@ -225,11 +228,69 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
         setIsListening(true);
         startPitchDetectionLoop();
       } else {
-        // iOS/Android: Microphone support coming soon
-        console.log('ℹ️ Native microphone support not yet implemented');
-        console.log('ℹ️ Piano playback is available - microphone pitch detection coming in next update');
-        setIsListening(false);
-        // Don't throw error - just log and continue
+        // iOS/Android: Use expo-audio-stream
+        console.log('🎤 Initializing native microphone...');
+
+        // Request permissions first
+        const { status } = await Audio.requestPermissionsAsync();
+        if (status !== 'granted') {
+          console.error('❌ Microphone permission denied');
+          setIsListening(false);
+          return;
+        }
+
+        // Initialize YIN pitch detector with requested sample rate
+        const requestedSampleRate = 44100;
+        pitchDetectorRef.current = new YINPitchDetector(requestedSampleRate, 2048, 0.1);
+        console.log('✅ Pitch detector initialized (Native)');
+
+        // Calculate interval for buffer size (2048 samples / 44100 Hz = ~46ms)
+        const intervalMs = Math.floor((2048 / requestedSampleRate) * 1000);
+
+        try {
+          // Start real-time audio streaming
+          const { recordingResult, subscription } = await ExpoPlayAudioStream.startRecording({
+            sampleRate: requestedSampleRate,
+            channels: 1,
+            encoding: 'pcm_16bit',
+            interval: intervalMs,
+            onAudioStream: (event: AudioDataEvent) => {
+              try {
+                // Convert base64 PCM to Float32Array
+                const pcmBuffer = base64ToFloat32Array(event.data, 'pcm_16bit');
+
+                // Process audio buffer (same as web)
+                if (pitchDetectorRef.current && pcmBuffer.length > 0) {
+                  processAudioBuffer(pcmBuffer);
+                }
+              } catch (error) {
+                console.error('❌ Error processing audio stream:', error);
+              }
+            }
+          });
+
+          // Store subscription for cleanup
+          audioSubscriptionRef.current = subscription || null;
+
+          // CRITICAL: Update sample rate if iOS changed it
+          const actualSampleRate = recordingResult.sampleRate || requestedSampleRate;
+          if (actualSampleRate !== requestedSampleRate) {
+            console.warn(`⚠️ Sample rate adjusted: ${requestedSampleRate} → ${actualSampleRate} Hz`);
+            pitchDetectorRef.current?.updateSampleRate(actualSampleRate);
+          }
+
+          console.log('✅ Native microphone initialized', {
+            sampleRate: actualSampleRate,
+            bufferSize: 2048,
+            interval: intervalMs
+          });
+
+          setIsListening(true);
+
+        } catch (error) {
+          console.error('❌ Native microphone initialization error:', error);
+          setIsListening(false);
+        }
       }
     } catch (error) {
       console.error('❌ Microphone initialization error:', error);
@@ -257,43 +318,8 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
       // Get audio data from microphone
       analyserRef.current.getFloatTimeDomainData(dataArray);
 
-      // Calculate RMS (volume) to detect if user is making sound
-      let rms = 0;
-      for (let i = 0; i < dataArray.length; i++) {
-        rms += dataArray[i] * dataArray[i];
-      }
-      rms = Math.sqrt(rms / dataArray.length);
-
-      // Only detect pitch if sufficient volume
-      if (rms > 0.005) {
-        const pitch = pitchDetectorRef.current.detectPitch(dataArray);
-
-        if (pitch && pitch.confidence > 0.5) {
-          // Calculate cents off from nearest note
-          const nearestFreq = noteToFrequency(pitch.note);
-          const cents = calculateCentsOff(pitch.frequency, nearestFreq);
-
-          // Apply exponential smoothing for stability
-          smoothedCentsRef.current =
-            smoothedCentsRef.current * (1 - smoothingFactor) + cents * smoothingFactor;
-          const smoothedCents = Math.round(smoothedCentsRef.current);
-
-          // Calculate accuracy percentage (0-100%)
-          const absCents = Math.abs(smoothedCents);
-          const accuracyPercent = Math.max(0, Math.min(100, 100 - absCents * 2));
-
-          setCurrentPitch({
-            note: pitch.note,
-            frequency: pitch.frequency,
-            confidence: pitch.confidence,
-            centsOff: smoothedCents,
-            accuracy: Math.round(accuracyPercent),
-          });
-        }
-      } else {
-        // No sound detected - clear pitch
-        setCurrentPitch(null);
-      }
+      // Process audio using shared function
+      processAudioBuffer(dataArray);
 
       // Continue loop
       animationFrameRef.current = requestAnimationFrame(detect);
@@ -377,8 +403,63 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
       animationFrameRef.current = null;
     }
 
+    // Stop native audio stream (iOS/Android)
+    if (Platform.OS !== 'web' && audioSubscriptionRef.current) {
+      ExpoPlayAudioStream.stopRecording().catch(error => {
+        console.error('❌ Error stopping recording:', error);
+      });
+      audioSubscriptionRef.current.remove();
+      audioSubscriptionRef.current = null;
+    }
+
     setIsListening(false);
     setCurrentPitch(null);
+  };
+
+  /**
+   * Process audio buffer and detect pitch
+   * Shared between web (AnalyserNode) and native (expo-audio-stream)
+   */
+  const processAudioBuffer = (dataArray: Float32Array) => {
+    if (!pitchDetectorRef.current) return;
+
+    // Calculate RMS (volume) to detect if user is making sound
+    let rms = 0;
+    for (let i = 0; i < dataArray.length; i++) {
+      rms += dataArray[i] * dataArray[i];
+    }
+    rms = Math.sqrt(rms / dataArray.length);
+
+    // Only detect pitch if sufficient volume
+    if (rms > 0.005) {
+      const pitch = pitchDetectorRef.current.detectPitch(dataArray);
+
+      if (pitch && pitch.confidence > 0.5) {
+        // Calculate cents off from nearest note
+        const nearestFreq = noteToFrequency(pitch.note);
+        const cents = calculateCentsOff(pitch.frequency, nearestFreq);
+
+        // Apply exponential smoothing for stability
+        smoothedCentsRef.current =
+          smoothedCentsRef.current * (1 - smoothingFactor) + cents * smoothingFactor;
+        const smoothedCents = Math.round(smoothedCentsRef.current);
+
+        // Calculate accuracy percentage (0-100%)
+        const absCents = Math.abs(smoothedCents);
+        const accuracyPercent = Math.max(0, Math.min(100, 100 - absCents * 2));
+
+        setCurrentPitch({
+          note: pitch.note,
+          frequency: pitch.frequency,
+          confidence: pitch.confidence,
+          centsOff: smoothedCents,
+          accuracy: Math.round(accuracyPercent),
+        });
+      }
+    } else {
+      // No sound detected - clear pitch
+      setCurrentPitch(null);
+    }
   };
 
   const cleanup = () => {
@@ -394,19 +475,30 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
       pianoRef.current.dispose();
     }
 
-    // Disconnect microphone
+    // Disconnect microphone (web)
     if (microphoneRef.current) {
       microphoneRef.current.disconnect();
     }
 
-    // Close audio context
+    // Close audio context (web)
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close();
     }
 
-    // Stop media stream
+    // Stop media stream (web)
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
+    }
+
+    // Clean up native audio (iOS/Android)
+    if (Platform.OS !== 'web') {
+      ExpoPlayAudioStream.stopRecording().catch(() => {
+        // Ignore errors during cleanup
+      });
+      if (audioSubscriptionRef.current) {
+        audioSubscriptionRef.current.remove();
+        audioSubscriptionRef.current = null;
+      }
     }
   };
 
@@ -463,4 +555,48 @@ function noteToFrequency(note: string): number {
 
   // Convert semitones to frequency using equal temperament
   return 440 * Math.pow(2, semitonesFromA4 / 12);
+}
+
+/**
+ * Convert base64 encoded PCM audio to Float32Array
+ * Used for native iOS/Android audio from expo-audio-stream
+ */
+function base64ToFloat32Array(
+  base64: string,
+  encoding: 'pcm_16bit' | 'pcm_32bit' | 'pcm_8bit'
+): Float32Array {
+  try {
+    // Decode base64 to binary
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // Convert based on encoding type
+    if (encoding === 'pcm_32bit') {
+      // 32-bit float - direct conversion
+      return new Float32Array(bytes.buffer);
+    } else if (encoding === 'pcm_16bit') {
+      // 16-bit signed integer - normalize to -1.0 to 1.0
+      const int16Array = new Int16Array(bytes.buffer);
+      const float32Array = new Float32Array(int16Array.length);
+      for (let i = 0; i < int16Array.length; i++) {
+        float32Array[i] = int16Array[i] / 32768.0;
+      }
+      return float32Array;
+    } else if (encoding === 'pcm_8bit') {
+      // 8-bit unsigned integer - normalize to -1.0 to 1.0
+      const float32Array = new Float32Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) {
+        float32Array[i] = (bytes[i] - 128) / 128.0;
+      }
+      return float32Array;
+    }
+
+    return new Float32Array(0);
+  } catch (error) {
+    console.error('❌ Error converting base64 to Float32Array:', error);
+    return new Float32Array(0);
+  }
 }
