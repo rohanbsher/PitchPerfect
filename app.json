@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.beatsnbytes.pitchperfect",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "PitchPerfect needs microphone access to analyze your singing pitch and provide real-time vocal coaching feedback.",
         "UIBackgroundModes": [

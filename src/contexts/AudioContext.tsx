@@ -180,48 +180,57 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
     try {
       console.log('🎤 Requesting microphone access...');
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-        },
-      });
+      if (Platform.OS === 'web') {
+        // Web platform: Use Web Audio API
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          },
+        });
 
-      streamRef.current = stream;
+        streamRef.current = stream;
 
-      // Create Web Audio context
-      const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
-      const audioContext = new AudioContextClass();
-      audioContextRef.current = audioContext;
+        // Create Web Audio context
+        const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+        const audioContext = new AudioContextClass();
+        audioContextRef.current = audioContext;
 
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+
+        // Get actual sample rate from audio context
+        const actualSampleRate = audioContext.sampleRate;
+        console.log('📊 Audio Context Sample Rate:', actualSampleRate);
+
+        // Initialize YIN pitch detector with actual sample rate
+        pitchDetectorRef.current = new YINPitchDetector(actualSampleRate, 2048, 0.1);
+        console.log('✅ Pitch detector initialized');
+
+        // Create analyser node
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        analyser.smoothingTimeConstant = 0.3;
+        analyserRef.current = analyser;
+
+        // Connect microphone to analyser
+        const microphone = audioContext.createMediaStreamSource(stream);
+        microphoneRef.current = microphone;
+        microphone.connect(analyser);
+
+        console.log('✅ Microphone initialized and connected');
+
+        setIsListening(true);
+        startPitchDetectionLoop();
+      } else {
+        // iOS/Android: Microphone support coming soon
+        console.log('ℹ️ Native microphone support not yet implemented');
+        console.log('ℹ️ Piano playback is available - microphone pitch detection coming in next update');
+        setIsListening(false);
+        // Don't throw error - just log and continue
       }
-
-      // Get actual sample rate from audio context
-      const actualSampleRate = audioContext.sampleRate;
-      console.log('📊 Audio Context Sample Rate:', actualSampleRate);
-
-      // Initialize YIN pitch detector with actual sample rate
-      pitchDetectorRef.current = new YINPitchDetector(actualSampleRate, 2048, 0.1);
-      console.log('✅ Pitch detector initialized');
-
-      // Create analyser node
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 2048;
-      analyser.smoothingTimeConstant = 0.3;
-      analyserRef.current = analyser;
-
-      // Connect microphone to analyser
-      const microphone = audioContext.createMediaStreamSource(stream);
-      microphoneRef.current = microphone;
-      microphone.connect(analyser);
-
-      console.log('✅ Microphone initialized and connected');
-
-      setIsListening(true);
-      startPitchDetectionLoop();
     } catch (error) {
       console.error('❌ Microphone initialization error:', error);
       setIsListening(false);
