@@ -99,7 +99,7 @@ export class ExerciseEngineV2 {
         exerciseId: this.exercise.id,
         startTime: new Date(),
         currentNoteIndex: 0,
-        totalNotes: this.exercise.notes.length,
+        totalNotes: this.exercise.notes?.length ?? 0,
         pitchReadings: [],
         noteResults: [],
       };
@@ -160,8 +160,9 @@ export class ExerciseEngineV2 {
 
       if (result.frequency > 0 && result.confidence > 0.5) {
         // Store reading if we're tracking a note
-        if (this.session && this.session.currentNoteIndex < this.exercise.notes.length) {
+        if (this.session && this.exercise.notes && this.session.currentNoteIndex < this.exercise.notes.length) {
           const currentNote = this.exercise.notes[this.session.currentNoteIndex];
+          if (!currentNote) return;
           const cents = this.calculateCentsOff(result.frequency, currentNote.frequency);
           const accuracy = Math.max(0, Math.min(100, 100 - Math.abs(cents) * 2));
 
@@ -191,6 +192,7 @@ export class ExerciseEngineV2 {
    */
   private async runExercise(): Promise<void> {
     if (!this.session) return;
+    if (!this.exercise.notes) return;
 
     for (let i = 0; i < this.exercise.notes.length; i++) {
       if (!this.isRunning) {
@@ -199,6 +201,10 @@ export class ExerciseEngineV2 {
       }
 
       const note = this.exercise.notes[i];
+      if (!note) {
+        console.error(`Note at index ${i} is undefined`);
+        continue;
+      }
       this.session.currentNoteIndex = i;
 
       // Clear pitch readings for this note

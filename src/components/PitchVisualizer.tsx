@@ -10,10 +10,8 @@ import {
   Group,
   vec,
   Skia,
-  useValue,
-  useTiming,
-  useComputedValue,
 } from '@shopify/react-native-skia';
+import { useSharedValue, useDerivedValue, withTiming } from 'react-native-reanimated';
 import { PitchDetectionResult } from '../utils/pitchDetection';
 
 interface PitchVisualizerProps {
@@ -22,7 +20,7 @@ interface PitchVisualizerProps {
   mode: 'line' | 'staff' | 'piano';
 }
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 
 export const PitchVisualizer: React.FC<PitchVisualizerProps> = ({
   pitchResult,
@@ -32,30 +30,49 @@ export const PitchVisualizer: React.FC<PitchVisualizerProps> = ({
   const canvasWidth = screenWidth - 40;
   const canvasHeight = 200;
 
-  // Animation values
-  const animatedPitch = useValue(0);
-  const time = useTiming({ loop: true }, { duration: 1000 });
+  // Load a basic font for text rendering
+  const font = useFont(require('../../assets/fonts/SpaceMono-Regular.ttf'), 14);
+  const largeFont = useFont(require('../../assets/fonts/SpaceMono-Regular.ttf'), 20);
+
+  // Animation values using Reanimated
+  const animatedFrequency = useSharedValue(0);
 
   useEffect(() => {
     if (pitchResult && pitchResult.frequency > 0) {
-      animatedPitch.current = pitchResult.frequency;
+      animatedFrequency.value = withTiming(pitchResult.frequency, { duration: 100 });
     }
-  }, [pitchResult]);
+  }, [pitchResult, animatedFrequency]);
 
   // Compute visual position based on frequency
-  const pitchY = useComputedValue(() => {
-    if (!pitchResult || pitchResult.frequency === 0) return canvasHeight / 2;
+  const pitchYValue = useDerivedValue(() => {
+    if (animatedFrequency.value === 0) return canvasHeight / 2;
 
     // Map frequency to Y position (log scale for musical perception)
     const minFreq = 100; // ~G2
     const maxFreq = 1000; // ~B5
     const logMin = Math.log(minFreq);
     const logMax = Math.log(maxFreq);
-    const logFreq = Math.log(Math.max(minFreq, Math.min(maxFreq, animatedPitch.current)));
+    const clampedFreq = Math.max(minFreq, Math.min(maxFreq, animatedFrequency.value));
+    const logFreq = Math.log(clampedFreq);
 
     const normalized = (logFreq - logMin) / (logMax - logMin);
     return canvasHeight - (normalized * canvasHeight * 0.8 + canvasHeight * 0.1);
-  }, [animatedPitch]);
+  }, [canvasHeight]);
+
+  // Calculate static pitch Y for immediate rendering
+  const pitchY = useMemo(() => {
+    if (!pitchResult || pitchResult.frequency === 0) return canvasHeight / 2;
+
+    const minFreq = 100;
+    const maxFreq = 1000;
+    const logMin = Math.log(minFreq);
+    const logMax = Math.log(maxFreq);
+    const clampedFreq = Math.max(minFreq, Math.min(maxFreq, pitchResult.frequency));
+    const logFreq = Math.log(clampedFreq);
+
+    const normalized = (logFreq - logMin) / (logMax - logMin);
+    return canvasHeight - (normalized * canvasHeight * 0.8 + canvasHeight * 0.1);
+  }, [pitchResult, canvasHeight]);
 
   // Color based on pitch accuracy
   const pitchColor = useMemo(() => {
@@ -69,6 +86,15 @@ export const PitchVisualizer: React.FC<PitchVisualizerProps> = ({
     return '#F44336';
   }, [pitchResult, targetNote]);
 
+  // Don't render text if fonts aren't loaded
+  if (!font || !largeFont) {
+    return (
+      <View style={styles.container}>
+        <Canvas style={{ width: canvasWidth, height: canvasHeight }} />
+      </View>
+    );
+  }
+
   const renderLineMode = () => {
     const path = Skia.Path.Make();
 
@@ -77,7 +103,7 @@ export const PitchVisualizer: React.FC<PitchVisualizerProps> = ({
 
     // Add current pitch point
     if (pitchResult && pitchResult.frequency > 0) {
-      path.lineTo(canvasWidth / 2, pitchY.current);
+      path.lineTo(canvasWidth / 2, pitchY);
     }
 
     path.lineTo(canvasWidth, canvasHeight / 2);
@@ -119,7 +145,7 @@ export const PitchVisualizer: React.FC<PitchVisualizerProps> = ({
         {pitchResult && pitchResult.frequency > 0 && (
           <Circle
             cx={canvasWidth / 2}
-            cy={pitchY.current}
+            cy={pitchY}
             r={8}
             color={pitchColor}
           />
@@ -132,6 +158,7 @@ export const PitchVisualizer: React.FC<PitchVisualizerProps> = ({
             y={30}
             text={pitchResult.note}
             color="#333333"
+            font={largeFont}
           />
         )}
 
@@ -142,6 +169,7 @@ export const PitchVisualizer: React.FC<PitchVisualizerProps> = ({
             y={canvasHeight - 10}
             text={`${Math.round(pitchResult.frequency)} Hz`}
             color="#666666"
+            font={font}
           />
         )}
 
@@ -152,6 +180,7 @@ export const PitchVisualizer: React.FC<PitchVisualizerProps> = ({
             y={30}
             text={`${pitchResult.cents > 0 ? '+' : ''}${pitchResult.cents}¢`}
             color={pitchColor}
+            font={font}
           />
         )}
       </Canvas>
@@ -180,8 +209,9 @@ export const PitchVisualizer: React.FC<PitchVisualizerProps> = ({
         <SkiaText
           x={25}
           y={staffStartY + staffLineSpacing * 2.5}
-          text="𝄞"
+          text="G"
           color="#333333"
+          font={largeFont}
         />
 
         {/* Note on staff */}
@@ -190,15 +220,15 @@ export const PitchVisualizer: React.FC<PitchVisualizerProps> = ({
             {/* Note head */}
             <Circle
               cx={canvasWidth / 2}
-              cy={pitchY.current}
+              cy={pitchY}
               r={6}
               color={pitchColor}
             />
 
             {/* Note stem */}
             <Line
-              p1={vec(canvasWidth / 2 + 6, pitchY.current)}
-              p2={vec(canvasWidth / 2 + 6, pitchY.current - 40)}
+              p1={vec(canvasWidth / 2 + 6, pitchY)}
+              p2={vec(canvasWidth / 2 + 6, pitchY - 40)}
               color={pitchColor}
               style="stroke"
               strokeWidth={2}
@@ -213,6 +243,7 @@ export const PitchVisualizer: React.FC<PitchVisualizerProps> = ({
             y={canvasHeight - 20}
             text={pitchResult.note}
             color="#333333"
+            font={largeFont}
           />
         )}
       </Canvas>
@@ -274,6 +305,7 @@ export const PitchVisualizer: React.FC<PitchVisualizerProps> = ({
                 y={canvasHeight - 10}
                 text={key}
                 color={isActive ? '#FFFFFF' : '#666666'}
+                font={font}
               />
             </Group>
           );
@@ -308,12 +340,14 @@ export const PitchVisualizer: React.FC<PitchVisualizerProps> = ({
               y={30}
               text={`${Math.round(pitchResult.frequency)} Hz`}
               color="#666666"
+              font={font}
             />
             <SkiaText
               x={20}
               y={50}
               text={`Confidence: ${Math.round(pitchResult.confidence * 100)}%`}
               color="#666666"
+              font={font}
             />
           </Group>
         )}

@@ -29,6 +29,8 @@ export interface PianoKeyProps {
   onPress: () => void;
   /** Whether audio is ready to play */
   disabled?: boolean;
+  /** Orientation of the keyboard */
+  orientation?: 'horizontal' | 'vertical';
 }
 
 /**
@@ -47,15 +49,19 @@ export const PianoKey: React.FC<PianoKeyProps> = ({
   isTarget,
   onPress,
   disabled = false,
+  orientation = 'horizontal',
 }) => {
   // Extract note name without octave for display
   const noteName = note.replace(/\d+/, '');
+  const isVertical = orientation === 'vertical';
 
   return (
     <TouchableOpacity
       style={[
         styles.keyContainer,
-        isBlack ? styles.blackKeyContainer : styles.whiteKeyContainer,
+        isBlack
+          ? (isVertical ? styles.blackKeyContainerVertical : styles.blackKeyContainer)
+          : (isVertical ? styles.whiteKeyContainerVertical : styles.whiteKeyContainer),
       ]}
       onPress={onPress}
       disabled={disabled}
@@ -68,24 +74,29 @@ export const PianoKey: React.FC<PianoKeyProps> = ({
             ? ['#1a1a1a', '#000000']
             : ['#ffffff', '#f0f0f0']
         }
+        start={isVertical ? { x: 0, y: 0 } : { x: 0, y: 0 }}
+        end={isVertical ? { x: 1, y: 0 } : { x: 0, y: 1 }}
         style={[
           styles.key,
-          isBlack ? styles.blackKey : styles.whiteKey,
+          isBlack
+            ? (isVertical ? styles.blackKeyVertical : styles.blackKey)
+            : (isVertical ? styles.whiteKeyVertical : styles.whiteKey),
           isDetected && styles.keyDetected,
         ]}
       >
         {/* Target indicator (exercise target note) */}
         {isTarget && (
-          <View style={styles.targetIndicator}>
+          <View style={isVertical ? styles.targetIndicatorVertical : styles.targetIndicator}>
             <View style={styles.targetDot} />
           </View>
         )}
 
         {/* Note label */}
-        <View style={styles.labelContainer}>
+        <View style={isVertical ? styles.labelContainerVertical : styles.labelContainer}>
           <Text style={[
             styles.label,
             isBlack ? styles.labelBlack : styles.labelWhite,
+            isVertical && styles.labelVertical,
           ]}>
             {noteName}
           </Text>
@@ -116,6 +127,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     zIndex: 10,
   },
+  // Vertical orientation containers
+  whiteKeyContainerVertical: {
+    width: '100%',
+    height: 32,
+    marginVertical: 1,
+  },
+  blackKeyContainerVertical: {
+    width: '65%',
+    height: 22,
+    position: 'absolute',
+    zIndex: 10,
+  },
 
   // Key body
   key: {
@@ -138,6 +161,29 @@ const styles = StyleSheet.create({
     borderColor: '#000',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  // Vertical key styles (rounded on right side instead of bottom)
+  whiteKeyVertical: {
+    borderRadius: 0,
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+    borderColor: '#d0d0d0',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  blackKeyVertical: {
+    borderRadius: 0,
+    borderTopRightRadius: 4,
+    borderBottomRightRadius: 4,
+    borderColor: '#000',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
@@ -168,6 +214,12 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     zIndex: 1,
   },
+  targetIndicatorVertical: {
+    position: 'absolute',
+    left: 8,
+    alignSelf: 'center',
+    zIndex: 1,
+  },
   targetDot: {
     width: 12,
     height: 12,
@@ -187,9 +239,17 @@ const styles = StyleSheet.create({
     bottom: 12,
     alignSelf: 'center',
   },
+  labelContainerVertical: {
+    position: 'absolute',
+    right: 8,
+    alignSelf: 'center',
+  },
   label: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  labelVertical: {
+    fontSize: 10,
   },
   labelWhite: {
     color: DesignSystem.colors.text.tertiary,

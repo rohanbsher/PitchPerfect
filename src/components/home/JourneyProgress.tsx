@@ -59,7 +59,7 @@ export const JourneyProgress: React.FC<JourneyProgressProps> = ({
       <View style={styles.progressBarBg}>
         {/* Progress fill */}
         <LinearGradient
-          colors={DS.colors.brand.gradient}
+          colors={DS.colors.brand.gradient as unknown as readonly [string, string]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[styles.progressBarFill, { width: `${progressPercentage}%` }]}

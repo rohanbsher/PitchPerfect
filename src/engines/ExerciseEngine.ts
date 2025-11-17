@@ -93,7 +93,7 @@ export class ExerciseEngine {
         exerciseId: this.exercise.id,
         startTime: new Date(),
         currentNoteIndex: 0,
-        totalNotes: this.exercise.notes.length,
+        totalNotes: this.exercise.notes?.length ?? 0,
         pitchReadings: [],
         noteResults: [],
       };
@@ -145,6 +145,7 @@ export class ExerciseEngine {
    */
   private async runExercise(): Promise<void> {
     if (!this.session) return;
+    if (!this.exercise.notes) return;
 
     for (let i = 0; i < this.exercise.notes.length; i++) {
       if (!this.isRunning) {
@@ -153,6 +154,10 @@ export class ExerciseEngine {
       }
 
       const note = this.exercise.notes[i];
+      if (!note) {
+        console.error(`Note at index ${i} is undefined`);
+        continue;
+      }
       this.session.currentNoteIndex = i;
 
       // Notify UI of note change

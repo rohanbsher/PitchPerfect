@@ -10,14 +10,26 @@
  * @module PianoScreen
  */
 
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PianoKeyboard } from '../components/piano/PianoKeyboard';
 import { useAudio } from '../contexts/AudioContext';
 import { DesignSystem as DS } from '../design/DesignSystem';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export const PianoScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const {
     pianoReady,
     isListening,
@@ -25,212 +37,428 @@ export const PianoScreen: React.FC = () => {
     startPitchDetection,
   } = useAudio();
 
+  // Animation values
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
   // Auto-start pitch detection when screen loads
   useEffect(() => {
     if (!isListening) {
       startPitchDetection();
     }
+    // Fade in animation
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
+  // Pulse animation when pitch is accurate
+  useEffect(() => {
+    if (currentPitch && currentPitch.accuracy > 85) {
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.05,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [currentPitch]);
+
+  const getAccuracyColor = (accuracy: number) => {
+    if (accuracy >= 85) return '#10B981'; // Green
+    if (accuracy >= 70) return '#F59E0B'; // Amber
+    if (accuracy >= 50) return '#F97316'; // Orange
+    return '#EF4444'; // Red
+  };
+
+  const getAccuracyLabel = (accuracy: number) => {
+    if (accuracy >= 95) return 'Excellent!';
+    if (accuracy >= 85) return 'Great!';
+    if (accuracy >= 70) return 'Good';
+    if (accuracy >= 50) return 'Keep trying';
+    return 'Off pitch';
+  };
+
   return (
-    <LinearGradient
-      colors={[DS.colors.accent.primary, DS.colors.accent.secondary]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.container}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>PITCH PERFECT</Text>
-        <Text style={styles.subtitle}>Sing and watch the piano light up</Text>
-      </View>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={['#1E1E2E', '#2D2D44', '#1E1E2E']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
 
-      {/* Pitch Feedback */}
-      {currentPitch && (
-        <View style={styles.feedbackContainer}>
-          <Text style={styles.detectedNote}>{currentPitch.note}</Text>
-          <Text style={styles.frequency}>
-            {currentPitch.frequency.toFixed(1)} Hz
-          </Text>
-
-          {/* Accuracy bar */}
-          <View style={styles.accuracyBarContainer}>
-            <View
-              style={[
-                styles.accuracyBar,
-                {
-                  width: `${currentPitch.accuracy}%`,
-                  backgroundColor:
-                    currentPitch.accuracy > 80
-                      ? DS.colors.accent.success
-                      : currentPitch.accuracy > 60
-                      ? '#FFC107'
-                      : DS.colors.accent.error,
-                },
-              ]}
-            />
+      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+        {/* Compact Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.title}>PitchPerfect</Text>
+            <View style={styles.statusBadge}>
+              <View style={[styles.statusDot, isListening && styles.statusDotActive]} />
+              <Text style={styles.statusText}>
+                {isListening ? 'Listening' : 'Mic Off'}
+              </Text>
+            </View>
           </View>
-          <Text style={styles.accuracyText}>{currentPitch.accuracy}% accurate</Text>
-
-          {/* Cents off indicator */}
-          <Text style={styles.centsText}>
-            {currentPitch.centsOff > 0
-              ? `${currentPitch.centsOff}¢ sharp`
-              : currentPitch.centsOff < 0
-              ? `${Math.abs(currentPitch.centsOff)}¢ flat`
-              : 'Perfect pitch!'}
-          </Text>
         </View>
-      )}
 
-      {!currentPitch && isListening && (
-        <View style={styles.feedbackContainer}>
-          <Text style={styles.waitingText}>Sing any note...</Text>
-        </View>
-      )}
-
-      {/* Piano Keyboard */}
-      <View style={styles.pianoContainer}>
-        {!pianoReady ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#ffffff" />
-            <Text style={styles.loadingText}>Loading piano...</Text>
+        {/* Main Layout: Piano Left (20%) | Feedback Right (80%) */}
+        <View style={styles.mainLayout}>
+          {/* Vertical Piano on Left */}
+          <View style={styles.pianoSideSection}>
+            {!pianoReady ? (
+              <View style={styles.loadingContainerSide}>
+                <ActivityIndicator size="small" color="#8B5CF6" />
+              </View>
+            ) : (
+              <PianoKeyboard orientation="vertical" />
+            )}
           </View>
-        ) : (
-          <PianoKeyboard />
+
+          {/* Pitch Feedback on Right */}
+          <View style={styles.feedbackSection}>
+            <View style={styles.pitchCard}>
+              <LinearGradient
+                colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)']}
+                style={styles.pitchCardGradient}
+              >
+                {currentPitch ? (
+                  <Animated.View style={[styles.pitchContent, { transform: [{ scale: pulseAnim }] }]}>
+                    {/* Note Display */}
+                    <View style={styles.noteSection}>
+                      <Text style={styles.noteLabel}>DETECTED NOTE</Text>
+                      <Text style={styles.noteName}>{currentPitch.note}</Text>
+                      <Text style={styles.frequency}>
+                        {currentPitch.frequency.toFixed(1)} Hz
+                      </Text>
+                    </View>
+
+                    {/* Accuracy Section */}
+                    <View style={styles.accuracySection}>
+                      <View style={styles.accuracyHeader}>
+                        <Text style={styles.accuracyLabel}>ACCURACY</Text>
+                        <Text style={[
+                          styles.accuracyValue,
+                          { color: getAccuracyColor(currentPitch.accuracy) }
+                        ]}>
+                          {currentPitch.accuracy}%
+                        </Text>
+                      </View>
+
+                      {/* Accuracy Bar */}
+                      <View style={styles.accuracyBarBg}>
+                        <Animated.View
+                          style={[
+                            styles.accuracyBarFill,
+                            {
+                              width: `${currentPitch.accuracy}%`,
+                              backgroundColor: getAccuracyColor(currentPitch.accuracy),
+                            },
+                          ]}
+                        />
+                      </View>
+
+                      <Text style={styles.accuracyFeedback}>
+                        {getAccuracyLabel(currentPitch.accuracy)}
+                      </Text>
+                    </View>
+
+                    {/* Pitch Deviation */}
+                    <View style={styles.deviationSection}>
+                      <Text style={styles.deviationLabel}>PITCH</Text>
+                      <Text style={[
+                        styles.deviationValue,
+                        currentPitch.centsOff === 0 && styles.perfectPitch
+                      ]}>
+                        {currentPitch.centsOff === 0
+                          ? 'Perfect!'
+                          : currentPitch.centsOff > 0
+                          ? `${currentPitch.centsOff}¢ sharp`
+                          : `${Math.abs(currentPitch.centsOff)}¢ flat`}
+                      </Text>
+                    </View>
+                  </Animated.View>
+                ) : (
+                  <View style={styles.waitingContent}>
+                    <View style={styles.micIconContainer}>
+                      <Text style={styles.micIcon}>🎤</Text>
+                    </View>
+                    <Text style={styles.waitingTitle}>
+                      {isListening ? 'Listening...' : 'Microphone Off'}
+                    </Text>
+                    <Text style={styles.waitingSubtitle}>
+                      {isListening
+                        ? 'Sing or hum a note to see it detected'
+                        : 'Enable microphone to start'}
+                    </Text>
+                  </View>
+                )}
+              </LinearGradient>
+            </View>
+          </View>
+        </View>
+
+        {/* Quick Actions */}
+        {!isListening && (
+          <View style={styles.actionContainer}>
+            <TouchableOpacity
+              style={styles.enableButton}
+              onPress={startPitchDetection}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#8B5CF6', '#7C3AED']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.enableButtonGradient}
+              >
+                <Text style={styles.enableButtonText}>Enable Microphone</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         )}
-      </View>
-
-      {/* Microphone Status */}
-      {!isListening && (
-        <View style={styles.microphonePrompt}>
-          <TouchableOpacity
-            style={styles.microphoneButton}
-            onPress={startPitchDetection}
-          >
-            <Text style={styles.microphoneButtonText}>
-              🎤 Enable Microphone
-            </Text>
-          </TouchableOpacity>
-          <Text style={styles.microphoneHint}>
-            Tap to allow microphone access for pitch detection
-          </Text>
-        </View>
-      )}
-    </LinearGradient>
+      </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#1E1E2E',
   },
+  content: {
+    flex: 1,
+    paddingHorizontal: 12,
+  },
+
+  // Header
   header: {
-    paddingTop: 60,
-    paddingBottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 8,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   title: {
-    ...DS.typography.title1,
-    color: '#ffffff',
+    fontSize: 20,
     fontWeight: '700',
-    letterSpacing: 1,
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
-  subtitle: {
-    ...DS.typography.callout,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 4,
-  },
-
-  // Pitch Feedback
-  feedbackContainer: {
+  statusBadge: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 20,
-    minHeight: 140,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    gap: 5,
   },
-  detectedNote: {
-    ...DS.typography.largeTitle,
-    color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 48,
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#6B7280',
   },
-  frequency: {
-    ...DS.typography.callout,
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginTop: 4,
+  statusDotActive: {
+    backgroundColor: '#10B981',
   },
-  accuracyBarContainer: {
-    width: 200,
-    height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 4,
-    marginTop: 16,
-    overflow: 'hidden',
-  },
-  accuracyBar: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  accuracyText: {
-    ...DS.typography.footnote,
-    color: '#ffffff',
-    marginTop: 8,
+  statusText: {
+    fontSize: 10,
     fontWeight: '600',
-  },
-  centsText: {
-    ...DS.typography.footnote,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 4,
-  },
-  waitingText: {
-    ...DS.typography.title3,
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontStyle: 'italic',
+    color: 'rgba(255,255,255,0.7)',
   },
 
-  // Piano
-  pianoContainer: {
+  // Main Layout: Piano Left | Feedback Right
+  mainLayout: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  pianoSideSection: {
+    width: '22%',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  loadingContainerSide: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  feedbackSection: {
+    flex: 1,
+  },
+
+  // Pitch Card
+  pitchCard: {
+    flex: 1,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  pitchCardGradient: {
+    flex: 1,
+    padding: 16,
+  },
+  pitchContent: {
     flex: 1,
     justifyContent: 'center',
   },
-  loadingContainer: {
+
+  // Note Section
+  noteSection: {
     alignItems: 'center',
-    gap: 16,
+    marginBottom: 16,
   },
-  loadingText: {
-    ...DS.typography.callout,
-    color: '#ffffff',
+  noteLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  noteName: {
+    fontSize: 56,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    lineHeight: 64,
+  },
+  frequency: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 2,
   },
 
-  // Microphone Prompt
-  microphonePrompt: {
-    position: 'absolute',
-    bottom: 100,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    paddingHorizontal: 40,
+  // Accuracy Section
+  accuracySection: {
+    marginBottom: 12,
   },
-  microphoneButton: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
+  accuracyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  accuracyLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1,
+  },
+  accuracyValue: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  accuracyBarBg: {
+    height: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  accuracyBarFill: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  accuracyFeedback: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+
+  // Deviation Section
+  deviationSection: {
+    alignItems: 'center',
+  },
+  deviationLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  deviationValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+  },
+  perfectPitch: {
+    color: '#10B981',
+  },
+
+  // Waiting State
+  waitingContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  micIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  micIcon: {
+    fontSize: 28,
+  },
+  waitingTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 6,
+  },
+  waitingSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+    textAlign: 'center',
+    paddingHorizontal: 8,
+  },
+
+  // Action Button
+  actionContainer: {
+    position: 'absolute',
+    bottom: 16,
+    left: 12,
+    right: 12,
+  },
+  enableButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowRadius: 12,
     elevation: 8,
   },
-  microphoneButtonText: {
-    ...DS.typography.headline,
-    color: DS.colors.accent.primary,
-    fontWeight: '600',
+  enableButtonGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
   },
-  microphoneHint: {
-    ...DS.typography.caption1,
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginTop: 12,
-    textAlign: 'center',
+  enableButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

@@ -41,7 +41,7 @@ export const NOTE_FREQUENCIES = {
 
 // Generate notes for different octaves
 export function generateNote(noteName: string, octave: number): Note {
-  const baseFreq = NOTE_FREQUENCIES[noteName];
+  const baseFreq = NOTE_FREQUENCIES[noteName as keyof typeof NOTE_FREQUENCIES];
   if (!baseFreq) throw new Error(`Unknown note: ${noteName}`);
 
   const octaveDiff = octave - 4;
