@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
+		43D26CD6BFE6368ADEA0A048 /* PitchDetectorModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6CE7F1F6D4EEF721CC0BEB /* PitchDetectorModule.swift */; };
+		7149AA4F23A1EEE21A75DC41 /* PitchDetectorBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 94D741963C9429BED6151062 /* PitchDetectorBridge.m */; };
 		95A87FEB5DE6869CD8004B5B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 974760E32D9BEABA31016A9A /* PrivacyInfo.xcprivacy */; };
 		ABDEE1FFC18AEF16808F50BE /* libPods-PitchPerfect.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5812EDE8D77907760EB708DE /* libPods-PitchPerfect.a */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
@@ -23,7 +25,9 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = PitchPerfect/Info.plist; sourceTree = "<group>"; };
 		3CE788598BC337788CA973DF /* Pods-PitchPerfect.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PitchPerfect.release.xcconfig"; path = "Target Support Files/Pods-PitchPerfect/Pods-PitchPerfect.release.xcconfig"; sourceTree = "<group>"; };
 		5812EDE8D77907760EB708DE /* libPods-PitchPerfect.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PitchPerfect.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		5B6CE7F1F6D4EEF721CC0BEB /* PitchDetectorModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PitchDetectorModule.swift; path = PitchPerfect/PitchDetectorModule.swift; sourceTree = "<group>"; };
 		6A0F873AB20740B62B07215C /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-PitchPerfect/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		94D741963C9429BED6151062 /* PitchDetectorBridge.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = PitchDetectorBridge.m; path = PitchPerfect/PitchDetectorBridge.m; sourceTree = "<group>"; };
 		974760E32D9BEABA31016A9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = PitchPerfect/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = PitchPerfect/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
@@ -54,6 +58,8 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
 				974760E32D9BEABA31016A9A /* PrivacyInfo.xcprivacy */,
+				5B6CE7F1F6D4EEF721CC0BEB /* PitchDetectorModule.swift */,
+				94D741963C9429BED6151062 /* PitchDetectorBridge.m */,
 			);
 			name = PitchPerfect;
 			sourceTree = "<group>";
@@ -332,6 +338,8 @@
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
 				FE7BFCF475C5C8DF7B19D10E /* ExpoModulesProvider.swift in Sources */,
+				43D26CD6BFE6368ADEA0A048 /* PitchDetectorModule.swift in Sources */,
+				7149AA4F23A1EEE21A75DC41 /* PitchDetectorBridge.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

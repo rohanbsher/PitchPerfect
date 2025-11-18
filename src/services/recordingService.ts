@@ -52,6 +52,10 @@ export class RecordingService {
       const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
       this.audioContext = new AudioContextClass();
 
+      if (!this.audioContext) {
+        throw new Error('Failed to create AudioContext');
+      }
+
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 4096;
       this.analyser.smoothingTimeConstant = 0.8;

@@ -88,6 +88,11 @@ export class WebAudioService implements IAudioService {
     const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
     this.audioContext = new AudioContextClass();
 
+    // Ensure audioContext was created successfully
+    if (!this.audioContext) {
+      throw new Error('AudioContext not initialized');
+    }
+
     if (this.audioContext.state === 'suspended') {
       await this.audioContext.resume();
     }
@@ -96,9 +101,6 @@ export class WebAudioService implements IAudioService {
     console.log('📊 WebAudioService: Sample Rate:', this.sampleRate);
 
     // 3. Create AnalyserNode
-    if (!this.audioContext) {
-      throw new Error('AudioContext not initialized');
-    }
 
     this.analyser = this.audioContext.createAnalyser();
     this.analyser.fftSize = this.bufferSize;

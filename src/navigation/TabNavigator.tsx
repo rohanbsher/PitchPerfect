@@ -12,8 +12,8 @@
 import React from 'react';
 import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { PianoScreen } from '../screens/PianoScreen';
-import { ExercisesScreen } from '../screens/ExercisesScreen';
+import { NativePitchScreen } from '../screens/NativePitchScreen';
+import { ExerciseScreenComplete } from '../screens/ExerciseScreenComplete';
 import { ProgressScreen } from '../screens/ProgressScreen';
 import { DesignSystem as DS } from '../design/DesignSystem';
 
@@ -40,18 +40,18 @@ export const TabNavigator: React.FC = () => {
       }}
     >
       <Tab.Screen
-        name="Piano"
-        component={PianoScreen}
+        name="Pitch"
+        component={NativePitchScreen}
         options={{
-          tabBarLabel: 'Piano',
+          tabBarLabel: 'Pitch',
           tabBarIcon: ({ color, size }) => (
-            <TabIcon icon="🎹" color={color} size={size} />
+            <TabIcon icon="🎤" color={color} size={size} />
           ),
         }}
       />
       <Tab.Screen
         name="Exercises"
-        component={ExercisesScreen}
+        component={ExerciseScreenComplete}
         options={{
           tabBarLabel: 'Exercises',
           tabBarIcon: ({ color, size }) => (

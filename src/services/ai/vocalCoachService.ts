@@ -1,11 +1,22 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ExerciseResult, NoteResult } from '../../data/models';
+import { NoteResult } from '../../data/models';
 
 // Initialize Anthropic client
 // NOTE: You'll need to set EXPO_PUBLIC_ANTHROPIC_API_KEY in your .env file
 const client = new Anthropic({
   apiKey: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY || '',
 });
+
+/**
+ * Helper to calculate average pitch error (cents) from note readings
+ */
+function getAveragePitchError(noteResult: NoteResult): number {
+  if (!noteResult.pitchReadings || noteResult.pitchReadings.length === 0) {
+    return 0;
+  }
+  const sum = noteResult.pitchReadings.reduce((acc, reading) => acc + reading.centsOff, 0);
+  return sum / noteResult.pitchReadings.length;
+}
 
 export interface VocalCoachFeedback {
   summary: string;
@@ -28,8 +39,8 @@ export async function generateVocalCoachFeedback(
   try {
     // Prepare analysis data
     const totalNotes = noteResults.length;
-    const successfulNotes = noteResults.filter((nr) => nr.success).length;
-    const failedNotes = noteResults.filter((nr) => !nr.success);
+    const successfulNotes = noteResults.filter((nr) => nr.passed).length;
+    const failedNotes = noteResults.filter((nr) => !nr.passed);
 
     // Calculate pitch tendency (sharp vs flat)
     let sharpCount = 0;
@@ -37,13 +48,14 @@ export async function generateVocalCoachFeedback(
     let unstableCount = 0;
 
     noteResults.forEach((nr) => {
-      if (nr.averagePitchError) {
-        if (Math.abs(nr.averagePitchError) > 30) {
+      const avgError = getAveragePitchError(nr);
+      if (avgError !== 0) {
+        if (Math.abs(avgError) > 30) {
           unstableCount++;
         }
-        if (nr.averagePitchError > 10) {
+        if (avgError > 10) {
           sharpCount++;
-        } else if (nr.averagePitchError < -10) {
+        } else if (avgError < -10) {
           flatCount++;
         }
       }
@@ -52,8 +64,8 @@ export async function generateVocalCoachFeedback(
     // Identify problem notes
     const problemNotes = failedNotes
       .map((nr) => ({
-        note: nr.targetNote,
-        avgError: nr.averagePitchError || 0,
+        note: nr.noteExpected,
+        avgError: getAveragePitchError(nr),
       }))
       .slice(0, 3); // Top 3 problem notes
 

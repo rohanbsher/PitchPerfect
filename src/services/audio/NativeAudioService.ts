@@ -156,7 +156,7 @@ export class NativeAudioService implements IAudioService {
 
       // Start real-time audio streaming
       const { recordingResult, subscription } = await ExpoPlayAudioStream.startRecording({
-        sampleRate: this.sampleRate,
+        sampleRate: this.sampleRate as 16000 | 44100 | 48000,
         channels: 1,
         encoding: this.recordingEncoding,
         interval: intervalMs,
@@ -192,7 +192,6 @@ export class NativeAudioService implements IAudioService {
         fileUri: recordingResult.fileUri,
         mimeType: recordingResult.mimeType,
         channels: recordingResult.channels,
-        bitRate: recordingResult.bitRate,
         sampleRate: recordingResult.sampleRate,
         requestedSampleRate: this.sampleRate,
         actualSampleRate: actualSampleRate

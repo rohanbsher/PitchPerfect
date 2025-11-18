@@ -111,7 +111,7 @@ export const ExercisePreview: React.FC<ExercisePreviewProps> = ({
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={DS.colors.brand.gradient}
+        colors={DS.colors.brand.gradient as [string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}

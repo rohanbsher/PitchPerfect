@@ -130,12 +130,12 @@ const styles = StyleSheet.create({
   // Vertical orientation containers
   whiteKeyContainerVertical: {
     width: '100%',
-    height: 32,
-    marginVertical: 1,
+    height: 20,
+    marginVertical: 0.5,
   },
   blackKeyContainerVertical: {
-    width: '65%',
-    height: 22,
+    width: '60%',
+    height: 14,
     position: 'absolute',
     zIndex: 10,
   },
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   },
   labelContainerVertical: {
     position: 'absolute',
-    right: 8,
+    right: 4,
     alignSelf: 'center',
   },
   label: {
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   labelVertical: {
-    fontSize: 10,
+    fontSize: 8,
   },
   labelWhite: {
     color: DesignSystem.colors.text.tertiary,

@@ -427,6 +427,9 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
    * Process audio buffer and detect pitch
    * Shared between web (AnalyserNode) and native (expo-audio-stream)
    */
+  const lastValidPitchRef = useRef<{ pitch: any; timestamp: number } | null>(null);
+  const frameCountRef = useRef(0);
+
   const processAudioBuffer = (dataArray: Float32Array) => {
     if (!pitchDetectorRef.current) return;
 
@@ -437,11 +440,24 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
     }
     rms = Math.sqrt(rms / dataArray.length);
 
-    // Only detect pitch if sufficient volume
-    if (rms > 0.005) {
+    // Log every 30 frames (~0.5 second) for debugging
+    frameCountRef.current++;
+    const shouldLog = frameCountRef.current % 30 === 0;
+
+    if (shouldLog) {
+      console.log(`🎤 Audio: RMS=${rms.toFixed(4)}`);
+    }
+
+    // Only detect pitch if sufficient volume (lowered from 0.005)
+    if (rms > 0.003) {
       const pitch = pitchDetectorRef.current.detectPitch(dataArray);
 
-      if (pitch && pitch.confidence > 0.5) {
+      if (shouldLog) {
+        console.log(`🎵 Pitch: ${pitch.frequency.toFixed(1)}Hz, conf=${pitch.confidence.toFixed(2)}, note=${pitch.note}`);
+      }
+
+      // Lowered confidence threshold from 0.5 to 0.3 for speaking voices
+      if (pitch && pitch.confidence > 0.3) {
         // Calculate cents off from nearest note
         const nearestFreq = noteToFrequency(pitch.note);
         const cents = calculateCentsOff(pitch.frequency, nearestFreq);
@@ -455,17 +471,40 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
         const absCents = Math.abs(smoothedCents);
         const accuracyPercent = Math.max(0, Math.min(100, 100 - absCents * 2));
 
-        setCurrentPitch({
+        const newPitch = {
           note: pitch.note,
           frequency: pitch.frequency,
           confidence: pitch.confidence,
           centsOff: smoothedCents,
           accuracy: Math.round(accuracyPercent),
-        });
+        };
+
+        setCurrentPitch(newPitch);
+
+        // Store as last valid pitch for hysteresis
+        lastValidPitchRef.current = {
+          pitch: newPitch,
+          timestamp: Date.now(),
+        };
+      } else if (shouldLog) {
+        console.log(`⚠️ Below confidence threshold: ${pitch.confidence.toFixed(2)} < 0.3`);
       }
     } else {
-      // No sound detected - clear pitch
-      setCurrentPitch(null);
+      // No sound detected - but use hysteresis (keep pitch for 200ms)
+      const now = Date.now();
+      if (lastValidPitchRef.current && now - lastValidPitchRef.current.timestamp < 200) {
+        // Keep last valid pitch (prevents flickering)
+        if (shouldLog) {
+          console.log(`🔄 Holding last pitch (hysteresis)`);
+        }
+      } else {
+        // Clear pitch after 200ms of silence
+        setCurrentPitch(null);
+        lastValidPitchRef.current = null;
+        if (shouldLog) {
+          console.log(`🔇 Below RMS threshold: ${rms.toFixed(4)} < 0.003`);
+        }
+      }
     }
   };
 

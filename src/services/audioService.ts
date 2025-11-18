@@ -199,7 +199,7 @@ export class AudioService {
       const recordingOptions: Audio.RecordingOptions = {
         android: {
           extension: '.m4a',
-          outputFormat: Audio.AndroidOutputFormat.MPEG4,
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
           audioEncoder: Audio.AndroidAudioEncoder.AAC,
           sampleRate: 44100,
           numberOfChannels: 2,

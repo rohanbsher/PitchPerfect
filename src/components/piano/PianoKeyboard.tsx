@@ -97,9 +97,9 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
 
   // For vertical layout, calculate black key top positions
   const getBlackKeyTopOffset = (whiteKeyIndex: number) => {
-    // Each white key is 32px height + 2px margin = 34px total
+    // Each white key is 20px height + 1px margin = 21px total
     // Black key should overlap between two white keys
-    return (whiteKeyIndex * 34) + 23; // Position at the boundary
+    return (whiteKeyIndex * 21) + 14; // Position at the boundary
   };
 
   if (isVertical) {
