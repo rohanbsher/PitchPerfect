@@ -63,6 +63,7 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
   // Regular React state for UI elements that need to re-render
   const eventEmitterRef = useRef<NativeEventEmitter | null>(null);
   const subscriptionRef = useRef<any>(null);
+  const wasListeningBeforeBackgroundRef = useRef(false);
 
   // Request microphone permission
   const requestPermissions = useCallback(async (): Promise<boolean> => {
@@ -170,19 +171,26 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
       if (nextAppState === 'background' || nextAppState === 'inactive') {
         // Stop audio when app goes to background to preserve battery
         if (isListening.value) {
+          wasListeningBeforeBackgroundRef.current = true;
           PitchDetectorModule.stopPitchDetection();
+          isListening.value = false;
           console.log('🛑 Pitch detection paused (app background)');
         }
       } else if (nextAppState === 'active') {
-        // Resume if we were listening before
-        if (isListening.value) {
-          PitchDetectorModule.startPitchDetection((error, result) => {
-            if (error) {
-              console.error('Failed to resume pitch detection:', error);
-            } else {
-              console.log('✅ Pitch detection resumed:', result);
-            }
-          });
+        // Resume if we were listening before going to background
+        if (wasListeningBeforeBackgroundRef.current) {
+          wasListeningBeforeBackgroundRef.current = false;
+          // Small delay to let iOS audio session settle
+          setTimeout(() => {
+            PitchDetectorModule.startPitchDetection((error, result) => {
+              if (error) {
+                console.error('Failed to resume pitch detection:', error);
+              } else {
+                isListening.value = true;
+                console.log('✅ Pitch detection resumed:', result);
+              }
+            });
+          }, 300);
         }
       }
     };

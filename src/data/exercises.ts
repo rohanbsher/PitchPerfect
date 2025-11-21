@@ -50,8 +50,11 @@ export interface DailyWorkout {
   id: string;
   name: string;
   description: string;
+  duration: string; // e.g., "5 min", "15 min"
+  details: string[]; // Bullet points of what you'll practice
   exercises: Exercise[];
   isBreathing?: boolean; // Flag for breathing-only workouts
+  recommended?: boolean; // Show as recommended
 }
 
 // Breathing phase definition
@@ -177,33 +180,38 @@ export const EXERCISES: Record<string, Exercise> = {
 
 export const DAILY_WORKOUTS: DailyWorkout[] = [
   {
-    id: 'beginner_daily',
-    name: 'Daily Vocal Workout',
-    description: 'A balanced workout for all skill levels',
+    id: 'quick_session',
+    name: 'Quick Session',
+    description: 'Perfect for daily practice',
+    duration: '5 min',
+    details: [
+      'Range check (C3-C6)',
+      'Pitch accuracy drill',
+      'Basic scale patterns',
+    ],
     exercises: [
       EXERCISES.warmup_scale,
       EXERCISES.descending_scale,
       EXERCISES.major_arpeggio,
     ],
+    recommended: true,
   },
   {
-    id: 'quick_warmup',
-    name: 'Quick Warm-up',
-    description: '2-minute warm-up routine',
+    id: 'full_workout',
+    name: 'Full Workout',
+    description: 'Comprehensive voice training',
+    duration: '15 min',
+    details: [
+      'Complete warm-up sequence',
+      'Interval training',
+      'Range expansion',
+    ],
     exercises: [
       EXERCISES.warmup_scale,
       EXERCISES.descending_scale,
-    ],
-  },
-  {
-    id: 'advanced_workout',
-    name: 'Advanced Workout',
-    description: 'Challenge your vocal range',
-    exercises: [
-      EXERCISES.warmup_scale,
+      EXERCISES.major_arpeggio,
       EXERCISES.octave_jump,
       EXERCISES.siren,
-      EXERCISES.extended_range,
     ],
   },
 ];
@@ -217,8 +225,8 @@ export const BREATHING_EXERCISES: Record<string, BreathingExercise> = {
   // 4-7-8 breathing technique
   four_seven_eight: {
     id: 'four_seven_eight',
-    name: '4-7-8 Breathing',
-    description: 'Calming breath pattern: inhale 4s, hold 7s, exhale 8s',
+    name: 'Breath Control',
+    description: 'Diaphragmatic breathing for sustained tone',
     phases: [
       { type: 'inhale', duration: 4 },
       { type: 'hold', duration: 7 },

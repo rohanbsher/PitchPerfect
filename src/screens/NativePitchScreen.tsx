@@ -405,18 +405,31 @@ export const NativePitchScreen: React.FC = () => {
             <Text style={styles.modalTitle}>Choose Workout</Text>
 
             {/* Vocal Workouts */}
-            {DAILY_WORKOUTS.slice(0, 2).map((workout) => (
+            {DAILY_WORKOUTS.map((workout) => (
               <TouchableOpacity
                 key={workout.id}
-                style={styles.workoutOption}
+                style={[
+                  styles.workoutOption,
+                  workout.recommended && styles.workoutOptionRecommended,
+                ]}
                 onPress={() => {
                   setShowWorkoutMenu(false);
                   exerciseEngineRef.current?.startWorkout(workout);
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.workoutName}>{workout.name}</Text>
-                <Text style={styles.workoutDesc}>{workout.description}</Text>
+                <View style={styles.workoutHeader}>
+                  <Text style={styles.workoutName}>{workout.name}</Text>
+                  <Text style={styles.workoutDuration}>{workout.duration}</Text>
+                </View>
+                {workout.details.map((detail, index) => (
+                  <Text key={index} style={styles.workoutDetail}>• {detail}</Text>
+                ))}
+                {workout.recommended && (
+                  <View style={styles.recommendedBadge}>
+                    <Text style={styles.recommendedText}>Recommended</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             ))}
 
@@ -429,8 +442,12 @@ export const NativePitchScreen: React.FC = () => {
               }}
               activeOpacity={0.7}
             >
-              <Text style={styles.workoutName}>Breathing Exercise</Text>
-              <Text style={styles.workoutDesc}>4-7-8 calming breath pattern</Text>
+              <View style={styles.workoutHeader}>
+                <Text style={styles.workoutName}>Breath Control</Text>
+                <Text style={styles.workoutDuration}>8 min</Text>
+              </View>
+              <Text style={styles.workoutDetail}>• Diaphragmatic breathing</Text>
+              <Text style={styles.workoutDetail}>• Build vocal support</Text>
             </TouchableOpacity>
 
             {/* Cancel */}
@@ -663,23 +680,57 @@ const styles = StyleSheet.create({
   workoutOption: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 12,
-    padding: 16,
+    padding: 20,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  workoutOptionRecommended: {
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+    backgroundColor: 'rgba(16, 185, 129, 0.05)',
   },
   breathingOption: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+    marginTop: 8,
+  },
+  workoutHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   workoutName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.95)',
   },
-  workoutDesc: {
+  workoutDuration: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#10B981',
+  },
+  workoutDetail: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  recommendedBadge: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  recommendedText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   cancelButton: {
     alignItems: 'center',

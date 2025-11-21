@@ -593,7 +593,8 @@ export class ExerciseEngine {
         await this.delay(status.durationMillis);
       }
     } catch (error) {
-      console.error(`Failed to play voice clip ${clipKey}:`, error);
+      // Audio interruptions are common and non-fatal (app backgrounding, etc.)
+      console.warn(`Voice clip interrupted (${clipKey}):`, error);
     }
   }
 
