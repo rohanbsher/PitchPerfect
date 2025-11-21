@@ -5,13 +5,15 @@
  * Shows confetti animation and session statistics.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
@@ -27,6 +29,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
+import { generatePostSessionFeedback } from '../../services/claudeAI';
+import { useStorage } from '../hooks/useStorage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -148,6 +152,53 @@ export function ResultsScreen({ route, navigation }: Props) {
   } = route.params || {};
 
   const message = getMessage(accuracy);
+  const { getSessions } = useStorage();
+
+  // AI Feedback state
+  const [aiFeedback, setAiFeedback] = useState<{
+    techniqueTip: string;
+    recommendedExercise: string;
+    strengths: string[];
+    improvements: string[];
+  } | null>(null);
+  const [loadingFeedback, setLoadingFeedback] = useState(true);
+  const [showFeedback, setShowFeedback] = useState(false);
+
+  // Generate AI feedback on mount
+  useEffect(() => {
+    const generateFeedback = async () => {
+      try {
+        // Load recent sessions
+        const sessions = await getSessions();
+        if (sessions.length === 0) {
+          setLoadingFeedback(false);
+          return;
+        }
+
+        // Get the most recent session (just completed)
+        const latestSession = sessions[0];
+
+        // Skip breathing exercises (no vocal technique to analyze)
+        if (latestSession.exerciseId === 'breathing' || latestSession.notesAttempted === 0) {
+          setLoadingFeedback(false);
+          return;
+        }
+
+        // Generate AI feedback
+        const feedback = await generatePostSessionFeedback(latestSession, sessions.slice(1, 11));
+
+        if (feedback) {
+          setAiFeedback(feedback);
+        }
+      } catch (error) {
+        console.error('Failed to generate AI feedback:', error);
+      } finally {
+        setLoadingFeedback(false);
+      }
+    };
+
+    generateFeedback();
+  }, []);
 
   const handlePracticeAgain = () => {
     navigation.replace('Main', { screen: 'Practice' });
@@ -161,7 +212,11 @@ export function ResultsScreen({ route, navigation }: Props) {
     <SafeAreaView style={styles.container}>
       <Confetti />
 
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Celebratory Header */}
         <Animated.View
           entering={FadeInUp.delay(200).duration(600)}
@@ -213,7 +268,74 @@ export function ResultsScreen({ route, navigation }: Props) {
             <Text style={styles.ringLabel}>Overall Score</Text>
           </View>
         </Animated.View>
-      </View>
+
+        {/* AI Coaching Feedback */}
+        {loadingFeedback ? (
+          <Animated.View
+            entering={FadeIn.delay(1000).duration(600)}
+            style={styles.feedbackContainer}
+          >
+            <ActivityIndicator size="small" color="#8B5CF6" />
+            <Text style={styles.feedbackLoadingText}>Analyzing your performance...</Text>
+          </Animated.View>
+        ) : aiFeedback ? (
+          <Animated.View
+            entering={FadeInUp.delay(1000).duration(600)}
+            style={styles.feedbackContainer}
+          >
+            <TouchableOpacity
+              style={styles.feedbackHeader}
+              onPress={() => setShowFeedback(!showFeedback)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.feedbackIcon}>🎯</Text>
+              <View style={styles.feedbackHeaderText}>
+                <Text style={styles.feedbackTitle}>AI Vocal Coach</Text>
+                <Text style={styles.feedbackSubtitle}>
+                  {showFeedback ? 'Tap to hide' : 'Tap for personalized tips'}
+                </Text>
+              </View>
+              <Text style={styles.feedbackChevron}>{showFeedback ? '▼' : '▶'}</Text>
+            </TouchableOpacity>
+
+            {showFeedback && (
+              <View style={styles.feedbackContent}>
+                {/* Technique Tip */}
+                <View style={styles.feedbackSection}>
+                  <Text style={styles.feedbackSectionTitle}>💡 Technique Tip</Text>
+                  <Text style={styles.feedbackText}>{aiFeedback.techniqueTip}</Text>
+                </View>
+
+                {/* Recommended Exercise */}
+                <View style={styles.feedbackSection}>
+                  <Text style={styles.feedbackSectionTitle}>🎵 Next Exercise</Text>
+                  <Text style={styles.feedbackText}>{aiFeedback.recommendedExercise}</Text>
+                </View>
+
+                {/* Strengths */}
+                {aiFeedback.strengths.length > 0 && (
+                  <View style={styles.feedbackSection}>
+                    <Text style={styles.feedbackSectionTitle}>✅ Strengths</Text>
+                    {aiFeedback.strengths.map((strength, index) => (
+                      <Text key={index} style={styles.feedbackListItem}>• {strength}</Text>
+                    ))}
+                  </View>
+                )}
+
+                {/* Improvements */}
+                {aiFeedback.improvements.length > 0 && (
+                  <View style={styles.feedbackSection}>
+                    <Text style={styles.feedbackSectionTitle}>🎯 Focus Areas</Text>
+                    {aiFeedback.improvements.map((improvement, index) => (
+                      <Text key={index} style={styles.feedbackListItem}>• {improvement}</Text>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+          </Animated.View>
+        ) : null}
+      </ScrollView>
 
       {/* Action Buttons */}
       <Animated.View
@@ -244,6 +366,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0A0A0A',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 40,
+    paddingBottom: 24,
   },
   content: {
     flex: 1,
@@ -357,5 +488,72 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 2,
+  },
+  feedbackContainer: {
+    width: '100%',
+    marginTop: 32,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#8B5CF6',
+    overflow: 'hidden',
+  },
+  feedbackLoadingText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  feedbackHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+  },
+  feedbackIcon: {
+    fontSize: 32,
+    marginRight: 16,
+  },
+  feedbackHeaderText: {
+    flex: 1,
+  },
+  feedbackTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  feedbackSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.6)',
+  },
+  feedbackChevron: {
+    fontSize: 16,
+    color: '#8B5CF6',
+    marginLeft: 8,
+  },
+  feedbackContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    gap: 16,
+  },
+  feedbackSection: {
+    gap: 8,
+  },
+  feedbackSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#8B5CF6',
+    marginBottom: 4,
+  },
+  feedbackText: {
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.9)',
+    lineHeight: 22,
+  },
+  feedbackListItem: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    lineHeight: 20,
+    paddingLeft: 8,
   },
 });

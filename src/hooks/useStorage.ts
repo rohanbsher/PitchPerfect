@@ -39,6 +39,10 @@ export interface UseStorageReturn {
   updateSettings: (newSettings: Partial<UserSettings>) => Promise<void>;
   refreshProgress: () => Promise<void>;
   refreshStats: () => Promise<void>;
+
+  // Data getters for AI
+  getSessions: () => Promise<SessionRecord[]>;
+  getVocalRange: () => Promise<import('../types/userProgress').VocalRange | null>;
 }
 
 /**
@@ -132,6 +136,18 @@ export function useStorage(): UseStorageReturn {
     }
   }, []);
 
+  // Get sessions for AI
+  const getSessions = useCallback(async () => {
+    const currentProgress = await getUserProgress();
+    return currentProgress.sessionHistory;
+  }, []);
+
+  // Get vocal range for AI
+  const getVocalRange = useCallback(async () => {
+    const currentProgress = await getUserProgress();
+    return currentProgress.vocalRange;
+  }, []);
+
   return {
     progress,
     stats,
@@ -143,6 +159,8 @@ export function useStorage(): UseStorageReturn {
     updateSettings: handleUpdateSettings,
     refreshProgress,
     refreshStats,
+    getSessions,
+    getVocalRange,
   };
 }
 

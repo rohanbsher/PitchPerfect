@@ -153,6 +153,11 @@ export class ExerciseEngine {
   private exerciseAccuracies: number[] = [];
   private allFrequenciesSung: number[] = [];
 
+  // AI Coaching tracking
+  private consecutiveLowScores: number = 0;
+  private lastAICoachingTime: number = 0;
+  private userVocalRange: { lowest: string; highest: string } = { lowest: 'C4', highest: 'C4' };
+
   constructor(callbacks: ExerciseCallbacks = {}) {
     this.callbacks = callbacks;
   }
@@ -406,6 +411,24 @@ export class ExerciseEngine {
     };
     this.noteAttempts.push(attempt);
 
+    // Update vocal range
+    if (avgFrequency > 0) {
+      const noteName = frequencyToNote(avgFrequency);
+      if (avgFrequency < NOTE_FREQUENCIES[this.userVocalRange.lowest] || this.userVocalRange.lowest === 'C4') {
+        this.userVocalRange.lowest = noteName;
+      }
+      if (avgFrequency > NOTE_FREQUENCIES[this.userVocalRange.highest] || this.userVocalRange.highest === 'C4') {
+        this.userVocalRange.highest = noteName;
+      }
+    }
+
+    // Track consecutive low scores for AI coaching
+    if (accuracy < 60) {
+      this.consecutiveLowScores++;
+    } else {
+      this.consecutiveLowScores = 0;
+    }
+
     // Provide feedback based on accuracy
     if (accuracy >= 90) {
       // Great job - no verbal feedback, just move on
@@ -424,10 +447,40 @@ export class ExerciseEngine {
       this.callbacks.onFeedback?.(`Aim for ${targetNote.note}`);
     }
 
+    // Request AI coaching if struggling (3+ consecutive low scores)
+    await this.checkForAICoaching(accuracy, targetNote.note);
+
     // Move to next note
     this.currentNoteIndex++;
     await this.delay(300);
     await this.playNextNote();
+  }
+
+  /**
+   * Check if AI coaching should be triggered
+   */
+  private async checkForAICoaching(currentAccuracy: number, targetNote: string): Promise<void> {
+    // Only trigger if:
+    // 1. User is struggling (3+ consecutive low scores)
+    // 2. Haven't requested coaching recently (20 seconds minimum)
+    const now = Date.now();
+    if (this.consecutiveLowScores >= 3 && now - this.lastAICoachingTime > 20000) {
+      this.lastAICoachingTime = now;
+
+      // Request AI coaching tip (non-blocking)
+      generateRealTimeCoachingTip(
+        this.consecutiveLowScores,
+        currentAccuracy,
+        targetNote,
+        this.userVocalRange
+      ).then(tip => {
+        if (tip && this.isRunning) {
+          this.callbacks.onAICoaching?.(tip);
+        }
+      }).catch(error => {
+        console.error('Failed to get AI coaching:', error);
+      });
+    }
   }
 
   /**

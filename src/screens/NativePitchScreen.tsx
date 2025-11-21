@@ -28,6 +28,7 @@ import { ExerciseEngine, ExerciseState, BreathingState } from '../engines/Exerci
 import { ExerciseNote, DAILY_WORKOUTS, getDefaultBreathingExercise } from '../data/exercises';
 import { useStorage } from '../hooks/useStorage';
 import type { RootStackParamList } from '../navigation/AppNavigator';
+import { CoachingBubble } from '../components/CoachingBubble';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -79,6 +80,10 @@ export const NativePitchScreen: React.FC = () => {
 
   // Breathing state
   const [breathingState, setBreathingState] = useState<BreathingState | null>(null);
+
+  // AI Coaching state
+  const [aiCoachingTip, setAiCoachingTip] = useState<string | null>(null);
+  const [showAICoaching, setShowAICoaching] = useState(false);
 
   // Shared values for animations
   const targetPitchY = useSharedValue(-100); // Off screen by default
@@ -153,6 +158,14 @@ export const NativePitchScreen: React.FC = () => {
       },
       onBreathingUpdate: (state) => {
         setBreathingState(state);
+      },
+      onAICoaching: (tip) => {
+        setAiCoachingTip(tip);
+        setShowAICoaching(true);
+        // Auto-hide after 8 seconds (matches CoachingBubble animation)
+        setTimeout(() => {
+          setShowAICoaching(false);
+        }, 8000);
       },
     });
 
@@ -339,6 +352,9 @@ export const NativePitchScreen: React.FC = () => {
             <Text style={styles.feedbackText}>{feedback}</Text>
           </View>
         ) : null}
+
+        {/* AI Coaching Bubble */}
+        <CoachingBubble message={aiCoachingTip} visible={showAICoaching} />
 
         {/* Exercise state indicator */}
         {exerciseState !== 'idle' && exerciseState !== 'complete' ? (

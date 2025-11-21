@@ -4,7 +4,7 @@
  * Main landing screen showing streak, stats, and quick actions.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -21,12 +21,14 @@ import Animated, {
   withSequence,
   withTiming,
   Easing,
+  FadeInDown,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { TabParamList } from '../navigation/AppNavigator';
 import { useStorage } from '../hooks/useStorage';
+import { getNextExerciseRecommendation } from '../../services/claudeAI';
 
 type NavigationProp = BottomTabNavigationProp<TabParamList>;
 
@@ -51,8 +53,15 @@ const getGreeting = (): string => {
 
 export function HomeScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { stats, isLoading, refreshStats } = useStorage();
+  const { stats, isLoading, refreshStats, getSessions, getVocalRange } = useStorage();
   const hasAnimatedRef = useRef(false);
+
+  // AI Recommendation state
+  const [recommendation, setRecommendation] = useState<{
+    exerciseName: string;
+    reason: string;
+  } | null>(null);
+  const [loadingRecommendation, setLoadingRecommendation] = useState(false);
 
   // Animation values
   const fireScale = useSharedValue(1);
@@ -63,9 +72,40 @@ export function HomeScreen() {
     // Refresh stats when screen comes into focus
     const unsubscribe = navigation.addListener('focus', () => {
       refreshStats();
+      loadRecommendation();
     });
     return unsubscribe;
   }, [navigation, refreshStats]);
+
+  // Load AI exercise recommendation
+  const loadRecommendation = async () => {
+    if (loadingRecommendation) return;
+
+    try {
+      setLoadingRecommendation(true);
+
+      const sessions = await getSessions();
+      // Only show recommendations if user has completed at least 3 sessions
+      if (sessions.length < 3) {
+        setLoadingRecommendation(false);
+        return;
+      }
+
+      const vocalRange = await getVocalRange();
+      if (!vocalRange) return; // Need vocal range data
+
+      const recentSessions = sessions.slice(0, 10); // Last 10 sessions
+
+      const rec = await getNextExerciseRecommendation(recentSessions, vocalRange);
+      if (rec) {
+        setRecommendation(rec);
+      }
+    } catch (error) {
+      console.error('Failed to load recommendation:', error);
+    } finally {
+      setLoadingRecommendation(false);
+    }
+  };
 
   // Animate streak on first load when stats arrive
   useEffect(() => {
@@ -168,6 +208,23 @@ export function HomeScreen() {
             <Text style={styles.statLabel}>Accuracy</Text>
           </View>
         </View>
+
+        {/* AI Exercise Recommendation */}
+        {recommendation && (
+          <Animated.View
+            entering={FadeInDown.delay(300).duration(600)}
+            style={styles.recommendationBanner}
+          >
+            <View style={styles.recommendationHeader}>
+              <Text style={styles.recommendationIcon}>🎯</Text>
+              <View style={styles.recommendationContent}>
+                <Text style={styles.recommendationTitle}>Recommended for You</Text>
+                <Text style={styles.recommendationExercise}>{recommendation.exerciseName}</Text>
+                <Text style={styles.recommendationReason}>{recommendation.reason}</Text>
+              </View>
+            </View>
+          </Animated.View>
+        )}
 
         {/* Start Practice Button */}
         <TouchableOpacity
@@ -301,6 +358,44 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.5)',
+  },
+  recommendationBanner: {
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#8B5CF6',
+    padding: 16,
+    marginBottom: 24,
+  },
+  recommendationHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  recommendationIcon: {
+    fontSize: 28,
+    marginRight: 12,
+  },
+  recommendationContent: {
+    flex: 1,
+  },
+  recommendationTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8B5CF6',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  recommendationExercise: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 6,
+  },
+  recommendationReason: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    lineHeight: 20,
   },
   startButton: {
     backgroundColor: '#10B981',
