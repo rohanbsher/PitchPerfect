@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useRef, useCallback } from 'react';
-import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
+import { NativeModules, NativeEventEmitter, Platform, AppState, AppStateStatus } from 'react-native';
 import { useSharedValue, runOnJS } from 'react-native-reanimated';
 
 // Native module interface
@@ -160,6 +160,35 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
     rms.value = 0;
 
     console.log('🛑 Native pitch detection stopped');
+  }, []);
+
+  // Handle app state changes (background/foreground)
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (Platform.OS !== 'ios') return;
+
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        // Stop audio when app goes to background to preserve battery
+        if (isListening.value) {
+          PitchDetectorModule.stopPitchDetection();
+          console.log('🛑 Pitch detection paused (app background)');
+        }
+      } else if (nextAppState === 'active') {
+        // Resume if we were listening before
+        if (isListening.value) {
+          PitchDetectorModule.startPitchDetection((error, result) => {
+            if (error) {
+              console.error('Failed to resume pitch detection:', error);
+            } else {
+              console.log('✅ Pitch detection resumed:', result);
+            }
+          });
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
   }, []);
 
   // Auto-start on mount if requested

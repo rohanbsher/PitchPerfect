@@ -81,41 +81,6 @@ export function SettingsScreen() {
             />
           </View>
 
-          <View style={styles.divider} />
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Show Cents</Text>
-              <Text style={styles.settingDescription}>
-                Display pitch accuracy in cents
-              </Text>
-            </View>
-            <Switch
-              value={settings.showCents}
-              onValueChange={(value) => update({ showCents: value })}
-              trackColor={{ false: '#3A3A3A', true: '#10B981' }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-        </View>
-
-        {/* Notifications Section */}
-        <Text style={styles.sectionTitle}>Notifications</Text>
-        <View style={styles.section}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Daily Reminder</Text>
-              <Text style={styles.settingDescription}>
-                Get reminded to practice every day
-              </Text>
-            </View>
-            <Switch
-              value={settings.dailyReminderEnabled}
-              onValueChange={(value) => update({ dailyReminderEnabled: value })}
-              trackColor={{ false: '#3A3A3A', true: '#10B981' }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
         </View>
 
         {/* Data Section */}

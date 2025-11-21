@@ -129,30 +129,6 @@ export function HomeScreen() {
           <Text style={styles.startButtonText}>Start Practice</Text>
         </TouchableOpacity>
 
-        {/* Quick Actions */}
-        <Text style={styles.sectionTitle}>Quick Start</Text>
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={styles.quickAction}
-            onPress={handleStartPractice}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.quickActionEmoji}>🎤</Text>
-            <Text style={styles.quickActionTitle}>Vocal Workout</Text>
-            <Text style={styles.quickActionSubtitle}>Full practice session</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.quickAction}
-            onPress={handleStartPractice}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.quickActionEmoji}>🌬️</Text>
-            <Text style={styles.quickActionTitle}>Breathing</Text>
-            <Text style={styles.quickActionSubtitle}>4-7-8 technique</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* This Week Stats */}
         {stats && stats.sessionsThisWeek > 0 && (
           <View style={styles.weeklyCard}>
@@ -294,39 +270,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#FFFFFF',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 16,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  quickAction: {
-    flex: 1,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-  },
-  quickActionEmoji: {
-    fontSize: 28,
-    marginBottom: 8,
-  },
-  quickActionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  quickActionSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
   },
   weeklyCard: {
     backgroundColor: '#1A1A1A',

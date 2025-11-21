@@ -18,7 +18,6 @@ import Animated, {
   useDerivedValue,
   useSharedValue,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -81,15 +80,8 @@ export const NativePitchScreen: React.FC = () => {
   // Breathing state
   const [breathingState, setBreathingState] = useState<BreathingState | null>(null);
 
-  // Double-tap tracking for showing button
-  const tapCountRef = useRef(0);
-  const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const hideButtonTimerRef = useRef<NodeJS.Timeout | null>(null);
-
   // Shared values for animations
   const targetPitchY = useSharedValue(-100); // Off screen by default
-  const buttonOpacity = useSharedValue(0); // Button hidden by default
-  const [showButton, setShowButton] = useState(false);
 
   // Use native pitch detector with AUTO-START
   const {
@@ -168,51 +160,6 @@ export const NativePitchScreen: React.FC = () => {
       exerciseEngineRef.current?.stop();
     };
   }, [saveSession, navigation]);
-
-  // Handle double-tap to show/hide button
-  const handleScreenTap = useCallback(() => {
-    tapCountRef.current += 1;
-
-    if (tapTimerRef.current) {
-      clearTimeout(tapTimerRef.current);
-    }
-
-    tapTimerRef.current = setTimeout(() => {
-      if (tapCountRef.current >= 2) {
-        // Double tap detected - toggle button visibility
-        if (showButton) {
-          // Hide button
-          buttonOpacity.value = withSpring(0, { damping: 15 });
-          setShowButton(false);
-        } else {
-          // Show button
-          setShowButton(true);
-          buttonOpacity.value = withSpring(1, { damping: 15 });
-
-          // Auto-hide after 4 seconds
-          if (hideButtonTimerRef.current) {
-            clearTimeout(hideButtonTimerRef.current);
-          }
-          hideButtonTimerRef.current = setTimeout(() => {
-            if (!exerciseEngineRef.current?.isActive()) {
-              buttonOpacity.value = withSpring(0, { damping: 15 });
-              setShowButton(false);
-            }
-          }, 4000);
-        }
-      }
-      tapCountRef.current = 0;
-    }, 300);
-  }, [showButton]);
-
-  // Animated style for button
-  const animatedButtonStyle = useAnimatedStyle(() => {
-    'worklet';
-    return {
-      opacity: buttonOpacity.value,
-      transform: [{ scale: 0.9 + buttonOpacity.value * 0.1 }],
-    };
-  });
 
   // Play piano note when tapping on C labels
   const playPianoNote = useCallback(async (noteName: string) => {
@@ -346,12 +293,8 @@ export const NativePitchScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      {/* Full-screen tracker - tappable for triple-tap */}
-      <TouchableOpacity
-        style={[styles.trackerContainer, { height: TRACKER_HEIGHT }]}
-        activeOpacity={1}
-        onPress={handleScreenTap}
-      >
+      {/* Full-screen tracker */}
+      <View style={[styles.trackerContainer, { height: TRACKER_HEIGHT }]}>
         {/* Note labels on left */}
         <View style={styles.labelsContainer}>{noteLabels}</View>
 
@@ -422,11 +365,14 @@ export const NativePitchScreen: React.FC = () => {
           </View>
         ) : null}
 
-        {/* Small workout button in corner - always visible */}
+      </View>
+
+      {/* Bottom control bar - always visible */}
+      <View style={styles.bottomBar}>
         <TouchableOpacity
           style={[
-            styles.cornerButton,
-            exerciseState !== 'idle' && exerciseState !== 'complete' && styles.cornerButtonActive
+            styles.workoutButton,
+            exerciseState !== 'idle' && exerciseState !== 'complete' && styles.workoutButtonActive
           ]}
           onPress={() => {
             if (exerciseEngineRef.current?.isActive()) {
@@ -435,13 +381,13 @@ export const NativePitchScreen: React.FC = () => {
               setShowWorkoutMenu(true);
             }
           }}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
-          <Text style={styles.cornerButtonText}>
-            {exerciseState !== 'idle' && exerciseState !== 'complete' ? '■' : '▶'}
+          <Text style={styles.workoutButtonText}>
+            {exerciseState !== 'idle' && exerciseState !== 'complete' ? 'Stop' : 'Start Workout'}
           </Text>
         </TouchableOpacity>
-      </TouchableOpacity>
+      </View>
 
       {/* Workout Selector Modal */}
       <Modal
@@ -639,24 +585,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'rgba(255, 255, 255, 0.6)',
   },
-  cornerButton: {
-    position: 'absolute',
-    bottom: 30,
-    right: 20,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(139, 92, 246, 0.3)',
-    justifyContent: 'center',
+  bottomBar: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingBottom: 8,
+  },
+  workoutButton: {
+    backgroundColor: '#10B981',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    zIndex: 30,
   },
-  cornerButtonActive: {
-    backgroundColor: 'rgba(239, 68, 68, 0.3)',
+  workoutButtonActive: {
+    backgroundColor: '#EF4444',
   },
-  cornerButtonText: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+  workoutButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   // Breathing overlay styles
   breathingOverlay: {
