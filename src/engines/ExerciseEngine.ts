@@ -20,6 +20,7 @@ import {
   NOTE_FREQUENCIES,
 } from '../data/exercises';
 import { SessionRecord, NoteAttempt } from '../types/userProgress';
+import { generateRealTimeCoachingTip } from '../../services/claudeAI';
 
 // Exercise state
 export type ExerciseState = 'idle' | 'playing_reference' | 'listening' | 'evaluating' | 'complete' | 'breathing';
@@ -41,6 +42,7 @@ export interface ExerciseCallbacks {
   onSessionComplete?: (session: SessionRecord) => void;
   onFeedback?: (message: string) => void;
   onBreathingUpdate?: (state: BreathingState | null) => void;
+  onAICoaching?: (tip: string) => void;
 }
 
 // Piano samples mapping

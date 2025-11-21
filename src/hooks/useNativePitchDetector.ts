@@ -182,15 +182,21 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
           wasListeningBeforeBackgroundRef.current = false;
           // Small delay to let iOS audio session settle
           setTimeout(() => {
-            PitchDetectorModule.startPitchDetection((error, result) => {
-              if (error) {
-                console.error('Failed to resume pitch detection:', error);
-              } else {
-                isListening.value = true;
-                console.log('✅ Pitch detection resumed:', result);
-              }
-            });
-          }, 300);
+            try {
+              PitchDetectorModule.startPitchDetection((error, result) => {
+                if (error) {
+                  // Audio session errors on resume are non-fatal, just log
+                  console.warn('Could not resume pitch detection:', error);
+                } else {
+                  isListening.value = true;
+                  console.log('✅ Pitch detection resumed:', result);
+                }
+              });
+            } catch (e) {
+              // Catch any synchronous errors from the native module
+              console.warn('Pitch detection resume skipped:', e);
+            }
+          }, 500); // Increased delay for better reliability
         }
       }
     };
