@@ -4,7 +4,7 @@
  * Main landing screen showing streak, stats, and quick actions.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,15 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -43,6 +52,12 @@ const getGreeting = (): string => {
 export function HomeScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { stats, isLoading, refreshStats } = useStorage();
+  const hasAnimatedRef = useRef(false);
+
+  // Animation values
+  const fireScale = useSharedValue(1);
+  const streakScale = useSharedValue(0.8);
+  const streakOpacity = useSharedValue(0);
 
   useEffect(() => {
     // Refresh stats when screen comes into focus
@@ -51,6 +66,39 @@ export function HomeScreen() {
     });
     return unsubscribe;
   }, [navigation, refreshStats]);
+
+  // Animate streak on first load when stats arrive
+  useEffect(() => {
+    if (stats && !hasAnimatedRef.current) {
+      hasAnimatedRef.current = true;
+
+      // Pop in the streak number
+      streakScale.value = withSpring(1, { damping: 8, stiffness: 150 });
+      streakOpacity.value = withTiming(1, { duration: 300 });
+
+      // Animate fire emoji with a pulse
+      if (stats.currentStreak > 0) {
+        fireScale.value = withRepeat(
+          withSequence(
+            withTiming(1.15, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+            withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) })
+          ),
+          -1, // Infinite
+          true
+        );
+      }
+    }
+  }, [stats]);
+
+  // Animated styles
+  const fireAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: fireScale.value }],
+  }));
+
+  const streakAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: streakScale.value }],
+    opacity: streakOpacity.value,
+  }));
 
   if (isLoading) {
     return (
@@ -82,15 +130,17 @@ export function HomeScreen() {
         {/* Streak Card */}
         <View style={styles.streakCard}>
           <View style={styles.streakContent}>
-            <Text style={styles.streakEmoji}>🔥</Text>
-            <View style={styles.streakInfo}>
+            <Animated.Text style={[styles.streakEmoji, fireAnimatedStyle]}>
+              🔥
+            </Animated.Text>
+            <Animated.View style={[styles.streakInfo, streakAnimatedStyle]}>
               <Text style={styles.streakNumber}>
                 {stats?.currentStreak || 0}
               </Text>
               <Text style={styles.streakLabel}>
                 day{(stats?.currentStreak || 0) !== 1 ? 's' : ''} streak
               </Text>
-            </View>
+            </Animated.View>
           </View>
           {stats && stats.longestStreak > 0 && (
             <Text style={styles.bestStreak}>

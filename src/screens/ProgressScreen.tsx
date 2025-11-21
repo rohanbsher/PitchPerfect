@@ -4,18 +4,21 @@
  * Shows practice history, calendar view, and statistics.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useStorage } from '../hooks/useStorage';
 import { SessionRecord } from '../types/userProgress';
+
+const SESSIONS_PER_PAGE = 10;
 
 // Format seconds to readable time
 const formatTime = (seconds: number): string => {
@@ -150,13 +153,34 @@ const calendarStyles = StyleSheet.create({
 export function ProgressScreen() {
   const navigation = useNavigation();
   const { progress, stats, isLoading, refreshProgress } = useStorage();
+  const [displayCount, setDisplayCount] = useState(SESSIONS_PER_PAGE);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       refreshProgress();
+      setDisplayCount(SESSIONS_PER_PAGE); // Reset pagination on focus
     });
     return unsubscribe;
   }, [navigation, refreshProgress]);
+
+  // Memoize calendar data (only needs last 28 days)
+  const calendarSessions = useMemo(() => {
+    if (!progress?.sessionHistory) return [];
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 28);
+    return progress.sessionHistory.filter(s => new Date(s.date) >= cutoff);
+  }, [progress?.sessionHistory]);
+
+  // Memoize displayed sessions with pagination
+  const displayedSessions = useMemo(() => {
+    return progress?.sessionHistory.slice(0, displayCount) || [];
+  }, [progress?.sessionHistory, displayCount]);
+
+  const hasMoreSessions = (progress?.sessionHistory.length || 0) > displayCount;
+
+  const loadMore = () => {
+    setDisplayCount(prev => prev + SESSIONS_PER_PAGE);
+  };
 
   if (isLoading) {
     return (
@@ -167,8 +191,6 @@ export function ProgressScreen() {
       </SafeAreaView>
     );
   }
-
-  const recentSessions = progress?.sessionHistory.slice(0, 10) || [];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -222,15 +244,15 @@ export function ProgressScreen() {
 
         {/* Calendar */}
         <Text style={styles.sectionTitle}>Practice History</Text>
-        <CalendarView sessions={progress?.sessionHistory || []} />
+        <CalendarView sessions={calendarSessions} />
 
         {/* Recent Sessions */}
-        {recentSessions.length > 0 && (
+        {displayedSessions.length > 0 && (
           <>
             <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
               Recent Sessions
             </Text>
-            {recentSessions.map((session, index) => (
+            {displayedSessions.map((session, index) => (
               <View key={session.id || index} style={styles.sessionCard}>
                 <View style={styles.sessionHeader}>
                   <Text style={styles.sessionName}>{session.exerciseName}</Text>
@@ -251,6 +273,17 @@ export function ProgressScreen() {
                 </View>
               </View>
             ))}
+
+            {/* Load More button */}
+            {hasMoreSessions && (
+              <TouchableOpacity
+                style={styles.loadMoreButton}
+                onPress={loadMore}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.loadMoreText}>Load More</Text>
+              </TouchableOpacity>
+            )}
           </>
         )}
 
@@ -407,5 +440,19 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  loadMoreButton: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    marginTop: 4,
+  },
+  loadMoreText: {
+    color: '#10B981',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
