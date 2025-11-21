@@ -1,246 +1,296 @@
 /**
- * Progress Screen - User Stats and History
+ * Progress Screen
  *
- * Shows user's progress, statistics, and practice history
- *
- * @module ProgressScreen
+ * Shows practice history, calendar view, and statistics.
  */
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DesignSystem as DS } from '../design/DesignSystem';
-import { progressTracker, StudentProgress, SessionData, Achievement } from '../services/progressTracking';
+import { useNavigation } from '@react-navigation/native';
+import { useStorage } from '../hooks/useStorage';
+import { SessionRecord } from '../types/userProgress';
 
-export const ProgressScreen: React.FC = () => {
-  const [progress, setProgress] = useState<StudentProgress | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
+// Format seconds to readable time
+const formatTime = (seconds: number): string => {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) {
+    const mins = Math.floor(seconds / 60);
+    return `${mins} min`;
+  }
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  return `${hours}h ${mins}m`;
+};
 
-  const loadProgress = () => {
-    const report = progressTracker.getProgressReport();
-    setProgress(report);
-  };
+// Format date for display
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days} days ago`;
+
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+// Simple calendar component
+const CalendarView = ({ sessions }: { sessions: SessionRecord[] }) => {
+  const today = new Date();
+  const days: Date[] = [];
+
+  // Get last 28 days (4 weeks)
+  for (let i = 27; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    days.push(date);
+  }
+
+  // Get practice dates
+  const practiceDates = new Set(
+    sessions.map(s => s.date.split('T')[0])
+  );
+
+  const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+  return (
+    <View style={calendarStyles.container}>
+      <View style={calendarStyles.header}>
+        {weekDays.map((day, i) => (
+          <Text key={i} style={calendarStyles.weekDay}>{day}</Text>
+        ))}
+      </View>
+      <View style={calendarStyles.grid}>
+        {days.map((date, i) => {
+          const dateStr = date.toISOString().split('T')[0];
+          const isPracticed = practiceDates.has(dateStr);
+          const isToday = dateStr === today.toISOString().split('T')[0];
+
+          return (
+            <View
+              key={i}
+              style={[
+                calendarStyles.day,
+                isPracticed && calendarStyles.dayPracticed,
+                isToday && calendarStyles.dayToday,
+              ]}
+            >
+              <Text
+                style={[
+                  calendarStyles.dayText,
+                  isPracticed && calendarStyles.dayTextPracticed,
+                ]}
+              >
+                {date.getDate()}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+const calendarStyles = StyleSheet.create({
+  container: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
+  header: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  weekDay: {
+    flex: 1,
+    textAlign: 'center',
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  day: {
+    width: '14.28%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+  },
+  dayPracticed: {
+    backgroundColor: '#10B981',
+  },
+  dayToday: {
+    borderWidth: 2,
+    borderColor: '#10B981',
+  },
+  dayText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
+  },
+  dayTextPracticed: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+});
+
+export function ProgressScreen() {
+  const navigation = useNavigation();
+  const { progress, stats, isLoading, refreshProgress } = useStorage();
 
   useEffect(() => {
-    loadProgress();
-  }, []);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    loadProgress();
-    setRefreshing(false);
-  };
-
-  const formatDuration = (seconds: number): string => {
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-    return `${hours}h ${remainingMinutes}m`;
-  };
-
-  const formatDate = (date: Date): string => {
-    const d = new Date(date);
-    return d.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
+    const unsubscribe = navigation.addListener('focus', () => {
+      refreshProgress();
     });
-  };
+    return unsubscribe;
+  }, [navigation, refreshProgress]);
 
-  if (!progress) {
+  if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading progress...</Text>
+          <ActivityIndicator size="large" color="#10B981" />
         </View>
       </SafeAreaView>
     );
   }
 
-  const hasData = progress.sessions.length > 0;
+  const recentSessions = progress?.sessionHistory.slice(0, 10) || [];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Your Progress</Text>
-          <Text style={styles.subtitle}>
-            {hasData
-              ? `${progress.sessions.length} sessions completed`
-              : 'Start practicing to track your progress'}
-          </Text>
-        </View>
+        <Text style={styles.title}>Progress</Text>
 
-        {/* Stats Cards */}
+        {/* Stats Summary */}
         <View style={styles.statsGrid}>
-          <StatCard
-            icon="🔥"
-            value={progress.currentStreak.toString()}
-            label="Day Streak"
-            highlight={progress.currentStreak >= 7}
-          />
-          <StatCard
-            icon="🎯"
-            value={`${Math.round(progress.overallAccuracy)}%`}
-            label="Avg Accuracy"
-            highlight={progress.overallAccuracy >= 90}
-          />
-          <StatCard
-            icon="⏱️"
-            value={formatDuration(progress.totalPracticeTime)}
-            label="Total Time"
-          />
-          <StatCard
-            icon="🎹"
-            value={hasData ? `${progress.currentRange.lowest}-${progress.currentRange.highest}` : '-'}
-            label="Vocal Range"
-          />
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{stats?.currentStreak || 0}</Text>
+            <Text style={styles.statLabel}>Current Streak</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{stats?.longestStreak || 0}</Text>
+            <Text style={styles.statLabel}>Longest Streak</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{stats?.averageAccuracy || 0}%</Text>
+            <Text style={styles.statLabel}>Avg Accuracy</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>
+              {formatTime(stats?.totalPracticeTime || 0)}
+            </Text>
+            <Text style={styles.statLabel}>Total Time</Text>
+          </View>
         </View>
 
-        {/* Achievements */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Achievements</Text>
-          {progress.achievements.length > 0 ? (
-            <View style={styles.achievementsList}>
-              {progress.achievements.map((achievement) => (
-                <AchievementCard key={achievement.id} achievement={achievement} />
-              ))}
+        {/* Vocal Range */}
+        {progress?.vocalRange && (
+          <View style={styles.rangeCard}>
+            <Text style={styles.sectionTitle}>Vocal Range</Text>
+            <View style={styles.rangeDisplay}>
+              <View style={styles.rangeNote}>
+                <Text style={styles.rangeValue}>{progress.vocalRange.lowest}</Text>
+                <Text style={styles.rangeLabel}>Lowest</Text>
+              </View>
+              <View style={styles.rangeLine} />
+              <View style={styles.rangeNote}>
+                <Text style={styles.rangeValue}>{progress.vocalRange.highest}</Text>
+                <Text style={styles.rangeLabel}>Highest</Text>
+              </View>
             </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🏆</Text>
-              <Text style={styles.emptyText}>
-                Complete exercises to unlock achievements
-              </Text>
-            </View>
-          )}
-        </View>
+          </View>
+        )}
+
+        {/* Calendar */}
+        <Text style={styles.sectionTitle}>Practice History</Text>
+        <CalendarView sessions={progress?.sessionHistory || []} />
 
         {/* Recent Sessions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Sessions</Text>
-          {progress.sessions.length > 0 ? (
-            <View style={styles.sessionsList}>
-              {progress.sessions
-                .slice(-5)
-                .reverse()
-                .map((session, index) => (
-                  <SessionCard key={index} session={session} formatDate={formatDate} formatDuration={formatDuration} />
-                ))}
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📝</Text>
-              <Text style={styles.emptyText}>
-                No sessions yet. Start your first exercise!
-              </Text>
-            </View>
-          )}
-        </View>
+        {recentSessions.length > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
+              Recent Sessions
+            </Text>
+            {recentSessions.map((session, index) => (
+              <View key={session.id || index} style={styles.sessionCard}>
+                <View style={styles.sessionHeader}>
+                  <Text style={styles.sessionName}>{session.exerciseName}</Text>
+                  <Text style={styles.sessionDate}>{formatDate(session.date)}</Text>
+                </View>
+                <View style={styles.sessionStats}>
+                  <Text style={styles.sessionStat}>
+                    {session.accuracy}% accuracy
+                  </Text>
+                  <Text style={styles.sessionStat}>
+                    {formatTime(session.duration)}
+                  </Text>
+                  {session.notesAttempted > 0 && (
+                    <Text style={styles.sessionStat}>
+                      {session.notesHit}/{session.notesAttempted} notes
+                    </Text>
+                  )}
+                </View>
+              </View>
+            ))}
+          </>
+        )}
+
+        {/* Empty State */}
+        {(!progress || progress.sessionHistory.length === 0) && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>📊</Text>
+            <Text style={styles.emptyTitle}>No sessions yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Complete your first practice session to see your progress here!
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
-};
-
-// Stat Card Component
-interface StatCardProps {
-  icon: string;
-  value: string;
-  label: string;
-  highlight?: boolean;
 }
-
-const StatCard: React.FC<StatCardProps> = ({ icon, value, label, highlight }) => (
-  <View style={[styles.statCard, highlight && styles.statCardHighlight]}>
-    <Text style={styles.statIcon}>{icon}</Text>
-    <Text style={[styles.statValue, highlight && styles.statValueHighlight]}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </View>
-);
-
-// Achievement Card Component
-interface AchievementCardProps {
-  achievement: Achievement;
-}
-
-const AchievementCard: React.FC<AchievementCardProps> = ({ achievement }) => (
-  <View style={styles.achievementCard}>
-    <Text style={styles.achievementIcon}>{achievement.icon}</Text>
-    <View style={styles.achievementInfo}>
-      <Text style={styles.achievementName}>{achievement.name}</Text>
-      <Text style={styles.achievementDescription}>{achievement.description}</Text>
-    </View>
-  </View>
-);
-
-// Session Card Component
-interface SessionCardProps {
-  session: SessionData;
-  formatDate: (date: Date) => string;
-  formatDuration: (seconds: number) => string;
-}
-
-const SessionCard: React.FC<SessionCardProps> = ({ session, formatDate, formatDuration }) => (
-  <View style={styles.sessionCard}>
-    <View style={styles.sessionHeader}>
-      <Text style={styles.sessionDate}>{formatDate(session.date)}</Text>
-      <Text style={styles.sessionAccuracy}>{Math.round(session.accuracy)}%</Text>
-    </View>
-    <View style={styles.sessionDetails}>
-      <Text style={styles.sessionDetail}>
-        {formatDuration(session.duration)} • {session.notesHit?.length || 0} notes
-      </Text>
-      {session.rangeLowest && session.rangeHighest && (
-        <Text style={styles.sessionRange}>
-          {session.rangeLowest} - {session.rangeHighest}
-        </Text>
-      )}
-    </View>
-  </View>
-);
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DS.colors.background.primary,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+    backgroundColor: '#0A0A0A',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    ...DS.typography.callout,
-    color: DS.colors.text.secondary,
+  scrollView: {
+    flex: 1,
   },
-  header: {
-    marginBottom: 24,
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 100,
   },
   title: {
-    ...DS.typography.title1,
-    color: DS.colors.text.primary,
-    marginBottom: 4,
-  },
-  subtitle: {
-    ...DS.typography.callout,
-    color: DS.colors.text.secondary,
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 24,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -248,77 +298,71 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 24,
   },
-  statCard: {
-    flex: 1,
-    minWidth: '45%',
-    backgroundColor: DS.colors.background.elevated,
-    borderRadius: 16,
+  statBox: {
+    width: '48%',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
-  },
-  statCardHighlight: {
-    backgroundColor: DS.colors.accent.primary + '20',
     borderWidth: 1,
-    borderColor: DS.colors.accent.primary + '40',
-  },
-  statIcon: {
-    fontSize: 24,
-    marginBottom: 8,
+    borderColor: '#2A2A2A',
   },
   statValue: {
-    ...DS.typography.title2,
-    color: DS.colors.text.primary,
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#10B981',
     marginBottom: 4,
   },
-  statValueHighlight: {
-    color: DS.colors.accent.primary,
-  },
   statLabel: {
-    ...DS.typography.caption1,
-    color: DS.colors.text.tertiary,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
   },
-  section: {
+  rangeCard: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
   },
-  sectionTitle: {
-    ...DS.typography.headline,
-    color: DS.colors.text.primary,
-    marginBottom: 12,
-  },
-  achievementsList: {
-    gap: 12,
-  },
-  achievementCard: {
+  rangeDisplay: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: DS.colors.background.elevated,
-    borderRadius: 12,
-    padding: 16,
+    justifyContent: 'center',
+    marginTop: 8,
   },
-  achievementIcon: {
-    fontSize: 32,
-    marginRight: 16,
+  rangeNote: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
-  achievementInfo: {
+  rangeValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  rangeLabel: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    marginTop: 4,
+  },
+  rangeLine: {
     flex: 1,
+    height: 2,
+    backgroundColor: '#10B981',
+    marginHorizontal: 20,
   },
-  achievementName: {
-    ...DS.typography.subheadline,
-    color: DS.colors.text.primary,
+  sectionTitle: {
+    fontSize: 18,
     fontWeight: '600',
-    marginBottom: 2,
-  },
-  achievementDescription: {
-    ...DS.typography.caption1,
-    color: DS.colors.text.secondary,
-  },
-  sessionsList: {
-    gap: 12,
+    color: '#FFFFFF',
+    marginBottom: 12,
   },
   sessionCard: {
-    backgroundColor: DS.colors.background.elevated,
+    backgroundColor: '#1A1A1A',
     borderRadius: 12,
     padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
   },
   sessionHeader: {
     flexDirection: 'row',
@@ -326,41 +370,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  sessionDate: {
-    ...DS.typography.subheadline,
-    color: DS.colors.text.primary,
-    fontWeight: '500',
-  },
-  sessionAccuracy: {
-    ...DS.typography.subheadline,
-    color: DS.colors.accent.primary,
+  sessionName: {
+    fontSize: 16,
     fontWeight: '600',
+    color: '#FFFFFF',
+    flex: 1,
   },
-  sessionDetails: {
+  sessionDate: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+  },
+  sessionStats: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 16,
   },
-  sessionDetail: {
-    ...DS.typography.caption1,
-    color: DS.colors.text.tertiary,
-  },
-  sessionRange: {
-    ...DS.typography.caption1,
-    color: DS.colors.text.secondary,
+  sessionStat: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
   },
   emptyState: {
     alignItems: 'center',
-    padding: 24,
-    backgroundColor: DS.colors.background.elevated,
-    borderRadius: 12,
+    paddingVertical: 48,
   },
-  emptyIcon: {
-    fontSize: 32,
-    marginBottom: 12,
+  emptyEmoji: {
+    fontSize: 48,
+    marginBottom: 16,
   },
-  emptyText: {
-    ...DS.typography.callout,
-    color: DS.colors.text.tertiary,
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.5)',
     textAlign: 'center',
+    lineHeight: 20,
   },
 });
