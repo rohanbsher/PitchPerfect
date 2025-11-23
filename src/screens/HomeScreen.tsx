@@ -62,6 +62,7 @@ export function HomeScreen() {
     reason: string;
   } | null>(null);
   const [loadingRecommendation, setLoadingRecommendation] = useState(false);
+  const [recommendationError, setRecommendationError] = useState<string | null>(null);
 
   // Animation values
   const fireScale = useSharedValue(1);
@@ -83,6 +84,7 @@ export function HomeScreen() {
 
     try {
       setLoadingRecommendation(true);
+      setRecommendationError(null); // Clear previous errors
 
       const sessions = await getSessions();
       // Only show recommendations if user has completed at least 3 sessions
@@ -92,16 +94,25 @@ export function HomeScreen() {
       }
 
       const vocalRange = await getVocalRange();
-      if (!vocalRange) return; // Need vocal range data
+      if (!vocalRange) {
+        setLoadingRecommendation(false);
+        return; // Need vocal range data
+      }
 
       const recentSessions = sessions.slice(0, 10); // Last 10 sessions
 
       const rec = await getNextExerciseRecommendation(recentSessions, vocalRange);
       if (rec) {
         setRecommendation(rec);
+        setRecommendationError(null); // Success - clear error
+      } else {
+        // API returned null (rate limited or other issue)
+        setRecommendationError('Unable to generate recommendation');
       }
     } catch (error) {
       console.error('Failed to load recommendation:', error);
+      setRecommendationError('Failed to load AI recommendation');
+      setRecommendation(null); // Clear stale recommendation on error
     } finally {
       setLoadingRecommendation(false);
     }
@@ -210,7 +221,7 @@ export function HomeScreen() {
         </View>
 
         {/* AI Exercise Recommendation */}
-        {recommendation && (
+        {recommendation && !recommendationError && (
           <Animated.View
             entering={FadeInDown.delay(300).duration(600)}
             style={styles.recommendationBanner}
@@ -224,6 +235,16 @@ export function HomeScreen() {
               </View>
             </View>
           </Animated.View>
+        )}
+
+        {/* AI Recommendation Error */}
+        {recommendationError && (
+          <View style={styles.recommendationError}>
+            <Text style={styles.recommendationErrorText}>{recommendationError}</Text>
+            <Text style={styles.recommendationErrorHint}>
+              Check your internet connection or try again later
+            </Text>
+          </View>
         )}
 
         {/* Start Practice Button */}
@@ -396,6 +417,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.8)',
     lineHeight: 20,
+  },
+  recommendationError: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    padding: 16,
+    marginBottom: 24,
+  },
+  recommendationErrorText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
+    marginBottom: 4,
+  },
+  recommendationErrorHint: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    lineHeight: 18,
   },
   startButton: {
     backgroundColor: '#10B981',
