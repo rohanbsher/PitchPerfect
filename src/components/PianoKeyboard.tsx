@@ -207,7 +207,7 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
       // Generate simple sine wave tone (using expo-av's built-in sounds as placeholders)
       // In production, use actual piano samples or synthesize tones
       const { sound: newSound } = await Audio.Sound.createAsync(
-        require('../../assets/sounds/piano/C4.mp3'),
+        require('../../assets/audio/piano/C4.aiff'),
         { shouldPlay: true, volume: 0.7 }
       );
 
