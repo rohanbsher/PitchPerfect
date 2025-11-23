@@ -64,6 +64,7 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
   const eventEmitterRef = useRef<NativeEventEmitter | null>(null);
   const subscriptionRef = useRef<any>(null);
   const wasListeningBeforeBackgroundRef = useRef(false);
+  const resumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Request microphone permission
   const requestPermissions = useCallback(async (): Promise<boolean> => {
@@ -181,7 +182,7 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
         if (wasListeningBeforeBackgroundRef.current) {
           wasListeningBeforeBackgroundRef.current = false;
           // Small delay to let iOS audio session settle
-          setTimeout(() => {
+          resumeTimeoutRef.current = setTimeout(() => {
             try {
               PitchDetectorModule.startPitchDetection((error, result) => {
                 if (error) {
@@ -202,7 +203,14 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => subscription?.remove();
+    return () => {
+      subscription?.remove();
+      // Clean up any pending resume timeout to prevent memory leak
+      if (resumeTimeoutRef.current) {
+        clearTimeout(resumeTimeoutRef.current);
+        resumeTimeoutRef.current = null;
+      }
+    };
   }, []);
 
   // Auto-start on mount if requested

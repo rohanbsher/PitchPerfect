@@ -5,7 +5,7 @@
  * Provides a clean interface to the storage service.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   getUserProgress,
   saveUserProgress,
@@ -65,6 +65,9 @@ export function useStorage(): UseStorageReturn {
   const [isLoadingProgress, setIsLoadingProgress] = useState(true);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
 
+  // Prevent concurrent session saves (race condition fix)
+  const savingSessionRef = useRef(false);
+
   // Load initial data
   useEffect(() => {
     loadInitialData();
@@ -92,7 +95,14 @@ export function useStorage(): UseStorageReturn {
 
   // Save a new session
   const handleSaveSession = useCallback(async (session: SessionRecord) => {
+    // Prevent concurrent saves to avoid data corruption
+    if (savingSessionRef.current) {
+      console.warn('Session save already in progress, skipping');
+      return;
+    }
+
     try {
+      savingSessionRef.current = true;
       await saveSession(session);
 
       // Refresh progress and stats after saving
@@ -106,6 +116,8 @@ export function useStorage(): UseStorageReturn {
     } catch (error) {
       console.error('Failed to save session:', error);
       throw error;
+    } finally {
+      savingSessionRef.current = false;
     }
   }, []);
 

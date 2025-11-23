@@ -81,7 +81,7 @@ export function RangeAnalysisScreen() {
     }
   };
 
-  const loadAIReport = async (analysis: RangeAnalysisResult, sessions: any[]) => {
+  const loadAIReport = async (analysis: RangeAnalysisResult, sessions: SessionRecord[]) => {
     if (loadingAI) return;
 
     try {
