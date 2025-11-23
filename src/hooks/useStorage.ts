@@ -21,6 +21,12 @@ import {
   SessionRecord,
   UserStats,
 } from '../types/userProgress';
+import {
+  analyzeVocalRange,
+  calculateFrequencyHeatmap,
+  RangeAnalysisResult,
+  FrequencyHeatmapEntry,
+} from '../services/rangeAnalysis';
 
 // Hook return type
 export interface UseStorageReturn {
@@ -43,6 +49,10 @@ export interface UseStorageReturn {
   // Data getters for AI
   getSessions: () => Promise<SessionRecord[]>;
   getVocalRange: () => Promise<import('../types/userProgress').VocalRange | null>;
+
+  // Range analysis
+  getRangeAnalysis: () => Promise<RangeAnalysisResult | null>;
+  getFrequencyHeatmap: () => Promise<FrequencyHeatmapEntry[]>;
 }
 
 /**
@@ -148,6 +158,21 @@ export function useStorage(): UseStorageReturn {
     return currentProgress.vocalRange;
   }, []);
 
+  // Get comprehensive range analysis
+  const getRangeAnalysis = useCallback(async () => {
+    const currentProgress = await getUserProgress();
+    if (currentProgress.sessionHistory.length < 3) {
+      return null; // Need at least 3 sessions for meaningful analysis
+    }
+    return analyzeVocalRange(currentProgress.sessionHistory);
+  }, []);
+
+  // Get frequency heatmap
+  const getFrequencyHeatmap = useCallback(async () => {
+    const currentProgress = await getUserProgress();
+    return calculateFrequencyHeatmap(currentProgress.sessionHistory);
+  }, []);
+
   return {
     progress,
     stats,
@@ -161,6 +186,8 @@ export function useStorage(): UseStorageReturn {
     refreshStats,
     getSessions,
     getVocalRange,
+    getRangeAnalysis,
+    getFrequencyHeatmap,
   };
 }
 

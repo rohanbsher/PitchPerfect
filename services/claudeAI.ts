@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { NoteAttempt, SessionRecord, VocalRange } from '../src/types/userProgress';
+import { analyzeVocalRange, RangeAnalysisResult } from '../src/services/rangeAnalysis';
 
 // Initialize Anthropic client
 const getAnthropicClient = () => {
@@ -131,10 +132,37 @@ function analyzePerformancePatterns(noteAttempts: NoteAttempt[]): {
     pitchTrend = 'inconsistent';
   }
 
+  // RANGE ANALYSIS: Detect if user struggles at high/low extremes
+  let rangeIssues: string | null = null;
+  if (noteAttempts.length > 0) {
+    const frequencies = noteAttempts.map(a => a.targetFrequency);
+    const minFreq = Math.min(...frequencies);
+    const maxFreq = Math.max(...frequencies);
+
+    // Check accuracy at extremes
+    const lowNotes = noteAttempts.filter(a => a.targetFrequency <= minFreq + (maxFreq - minFreq) * 0.25);
+    const highNotes = noteAttempts.filter(a => a.targetFrequency >= minFreq + (maxFreq - minFreq) * 0.75);
+
+    const lowAccuracy = lowNotes.length > 0
+      ? lowNotes.reduce((sum, n) => sum + n.accuracy, 0) / lowNotes.length
+      : 100;
+    const highAccuracy = highNotes.length > 0
+      ? highNotes.reduce((sum, n) => sum + n.accuracy, 0) / highNotes.length
+      : 100;
+
+    if (lowAccuracy < 60 && highAccuracy < 60) {
+      rangeIssues = 'Struggling at both range extremes - may need more foundational technique work';
+    } else if (lowAccuracy < 60) {
+      rangeIssues = 'Lower range weakness detected - focus on chest voice support';
+    } else if (highAccuracy < 60) {
+      rangeIssues = 'Upper range strain detected - work on head voice transition';
+    }
+  }
+
   return {
     averageAccuracy: avgAccuracy,
     consistentlyLowNotes,
-    rangeIssues: null, // TODO: Implement range analysis
+    rangeIssues,
     pitchTrend,
   };
 }
@@ -314,6 +342,147 @@ Format as JSON:
     return recommendation;
   } catch (error) {
     console.error('Error generating exercise recommendation:', error);
+    return null;
+  }
+}
+
+// Generate comprehensive AI-powered vocal range analysis report
+export async function generateRangeAnalysisReport(
+  rangeAnalysis: RangeAnalysisResult,
+  recentSessions: SessionRecord[]
+): Promise<{
+  rangeAssessment: string;
+  comfortableRangeInsight: string;
+  weaknessAnalysis: string;
+  expansionCoaching: string;
+  recommendedExercises: string[];
+  techniqueTips: string[];
+} | null> {
+  const client = getAnthropicClient();
+  if (!client) {
+    return null;
+  }
+
+  try {
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 800,
+      system: COACH_SYSTEM_PROMPT,
+      messages: [
+        {
+          role: 'user',
+          content: `Analyze this singer's vocal range performance:
+
+CURRENT RANGE:
+- Full range: ${rangeAnalysis.currentRange.lowest} to ${rangeAnalysis.currentRange.highest}
+- Comfortable range (70%+ accuracy): ${rangeAnalysis.comfortableRange.lowest} to ${rangeAnalysis.comfortableRange.highest}
+- Comfortable span: ${rangeAnalysis.comfortableRange.spanSemitones} semitones
+- Strongest note: ${rangeAnalysis.strongestNote?.note || 'Not enough data'} (${rangeAnalysis.strongestNote?.accuracy.toFixed(0)}% accuracy)
+
+RANGE EXPANSION:
+- Last 30 days: ${rangeAnalysis.expansion.last30Days.semitones} semitones (${rangeAnalysis.expansion.last30Days.direction})
+- All-time: ${rangeAnalysis.expansion.allTime.semitones} semitones
+
+WEAKNESSES BY FREQUENCY BAND:
+${rangeAnalysis.weaknesses.length > 0
+  ? rangeAnalysis.weaknesses.map(w => `- ${w.frequencyBand.toUpperCase()} (${w.averageAccuracy.toFixed(0)}%): ${w.notes.join(', ')}`).join('\n')
+  : '- No significant weaknesses detected'}
+
+EXTENDED RANGE (struggling notes):
+- Lower extension: ${rangeAnalysis.extendedRange.lower?.note || 'None'}
+- Upper extension: ${rangeAnalysis.extendedRange.upper?.note || 'None'}
+
+Provide professional vocal coaching analysis:
+
+1. **Range Assessment** (2-3 sentences): Overall evaluation of their vocal range - is it typical? Impressive? Needs work?
+
+2. **Comfortable Range Insight** (2 sentences): What does their comfortable ${rangeAnalysis.comfortableRange.spanSemitones}-semitone range tell you?
+
+3. **Weakness Analysis** (2-3 sentences): Analyze their specific weak frequency bands. What's causing the struggle?
+
+4. **Expansion Coaching** (3-4 sentences): Based on their expansion trend, give specific advice for safely expanding range.
+
+5. **Recommended Exercises** (list 3): Which PitchPerfect exercises should they focus on? Choose from: Warm-up Scale, Descending Scale, Octave Jump, Major Arpeggio, Siren, Extended Range
+
+6. **Technique Tips** (list 3-4): Specific vocal technique advice for their weaknesses.
+
+Format as JSON:
+{
+  "rangeAssessment": "...",
+  "comfortableRangeInsight": "...",
+  "weaknessAnalysis": "...",
+  "expansionCoaching": "...",
+  "recommendedExercises": ["...", "...", "..."],
+  "techniqueTips": ["...", "...", "..."]
+}`,
+        },
+      ],
+    });
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+
+    // Extract JSON
+    let jsonText = responseText;
+    const jsonMatch = responseText.match(/```json\n?([\s\S]*?)\n?```/);
+    if (jsonMatch) {
+      jsonText = jsonMatch[1];
+    } else {
+      const objectMatch = responseText.match(/\{[\s\S]*\}/);
+      if (objectMatch) {
+        jsonText = objectMatch[0];
+      }
+    }
+
+    const report = JSON.parse(jsonText);
+    return report;
+  } catch (error) {
+    console.error('Error generating range analysis report:', error);
+    return null;
+  }
+}
+
+// Generate real-time range safety coaching (warn if pushing too hard)
+export async function generateRangeSafetyCoaching(
+  targetNote: string,
+  targetFrequency: number,
+  comfortableRange: { lowest: string; highest: string },
+  currentAccuracy: number
+): Promise<string | null> {
+  if (!canMakeAPICall()) {
+    return null;
+  }
+
+  const client = getAnthropicClient();
+  if (!client) {
+    return null;
+  }
+
+  // Determine if outside comfortable range
+  const isOutsideComfort = true; // Caller should pre-filter this
+
+  try {
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 150,
+      system: COACH_SYSTEM_PROMPT,
+      messages: [
+        {
+          role: 'user',
+          content: `The student is attempting a note OUTSIDE their comfortable range:
+
+TARGET NOTE: ${targetNote}
+CURRENT ACCURACY: ${currentAccuracy.toFixed(0)}%
+COMFORTABLE RANGE: ${comfortableRange.lowest} to ${comfortableRange.highest}
+
+This is at the edge of their ability. Provide ONE safety-focused tip (1-2 sentences) to help them sing this note safely without straining.`,
+        },
+      ],
+    });
+
+    const tip = message.content[0].type === 'text' ? message.content[0].text : null;
+    return tip;
+  } catch (error) {
+    console.warn('Error generating range safety coaching:', error);
     return null;
   }
 }

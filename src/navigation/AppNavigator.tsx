@@ -14,6 +14,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 import { HomeScreen } from '../screens/HomeScreen';
 import { NativePitchScreen } from '../screens/NativePitchScreen';
 import { ProgressScreen } from '../screens/ProgressScreen';
+import { RangeAnalysisScreen } from '../screens/RangeAnalysisScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { ResultsScreen } from '../screens/ResultsScreen';
 
@@ -22,6 +23,7 @@ export type TabParamList = {
   Home: undefined;
   Practice: undefined;
   Progress: undefined;
+  Range: undefined;
   Settings: undefined;
 };
 
@@ -46,6 +48,7 @@ const TabIcon = ({ name, focused }: { name: string; focused: boolean }) => {
     Home: '🏠',
     Practice: '🎵',
     Progress: '📊',
+    Range: '🎹',
     Settings: '⚙️',
   };
 
@@ -106,6 +109,14 @@ function TabNavigator() {
         options={{
           tabBarLabel: 'Progress',
           tabBarIcon: ({ focused }) => <TabIcon name="Progress" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="Range"
+        component={RangeAnalysisScreen}
+        options={{
+          tabBarLabel: 'Range',
+          tabBarIcon: ({ focused }) => <TabIcon name="Range" focused={focused} />,
         }}
       />
       <Tab.Screen

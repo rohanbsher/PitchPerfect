@@ -174,6 +174,44 @@ export const EXERCISES: Record<string, Exercise> = {
       createNote('G5', 2),
     ],
   },
+
+  // Comprehensive range test
+  range_test: {
+    id: 'range_test',
+    name: 'Full Range Test',
+    description: 'Systematic range assessment from C3 to C6',
+    difficulty: 'intermediate',
+    notes: [
+      // Low range (C3-G3)
+      createNote('C3', 1.5),
+      createNote('D3', 1.5),
+      createNote('E3', 1.5),
+      createNote('F3', 1.5),
+      createNote('G3', 1.5),
+      // Mid-low range (A3-C4)
+      createNote('A3', 1.5),
+      createNote('B3', 1.5),
+      createNote('C4', 1.5),
+      // Mid range (D4-G4)
+      createNote('D4', 1.5),
+      createNote('E4', 1.5),
+      createNote('F4', 1.5),
+      createNote('G4', 1.5),
+      // Mid-high range (A4-C5)
+      createNote('A4', 1.5),
+      createNote('B4', 1.5),
+      createNote('C5', 1.5),
+      // High range (D5-G5)
+      createNote('D5', 1.5),
+      createNote('E5', 1.5),
+      createNote('F5', 1.5),
+      createNote('G5', 1.5),
+      // Upper range (A5-C6)
+      createNote('A5', 1.5),
+      createNote('B5', 1.5),
+      createNote('C6', 1.5),
+    ],
+  },
 };
 
 // === DAILY WORKOUTS ===
