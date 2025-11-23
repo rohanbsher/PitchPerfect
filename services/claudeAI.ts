@@ -59,7 +59,7 @@ export async function generateRealTimeCoachingTip(
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 150,
       system: COACH_SYSTEM_PROMPT,
       messages: [
@@ -176,7 +176,7 @@ export async function generatePostSessionFeedback(
       recentAccuracies[recentAccuracies.length - 1] > recentAccuracies[0];
 
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 500,
       system: COACH_SYSTEM_PROMPT,
       messages: [
@@ -260,7 +260,7 @@ export async function getNextExerciseRecommendation(
     }));
 
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 200,
       system: COACH_SYSTEM_PROMPT,
       messages: [
