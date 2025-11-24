@@ -44,6 +44,7 @@ export function RangeAnalysisScreen() {
     techniqueTips: string[];
   } | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
+  const [aiReportError, setAiReportError] = useState<string | null>(null);
   const [analysisLoaded, setAnalysisLoaded] = useState(false);
 
   useEffect(() => {
@@ -86,13 +87,58 @@ export function RangeAnalysisScreen() {
 
     try {
       setLoadingAI(true);
+      setAiReportError(null); // Clear previous errors
+
       const recentSessions = sessions.slice(0, 10);
       const report = await generateRangeAnalysisReport(analysis, recentSessions);
+
       if (report) {
         setAiReport(report);
+        setAiReportError(null); // Success - clear error
+      } else {
+        // API returned null (rate limited or other issue)
+        setAiReportError('Unable to generate AI analysis');
       }
     } catch (error) {
       console.error('Failed to load AI report:', error);
+
+      let errorMessage = 'Unable to generate AI analysis at this time.';
+
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          errorMessage = 'AI analysis timed out. Your range data was saved.';
+        } else if (error.message.includes('network')) {
+          errorMessage = 'No internet connection. AI analysis will be available when online.';
+        }
+      }
+
+      setAiReportError(errorMessage);
+      setAiReport(null); // Clear stale report on error
+    } finally {
+      setLoadingAI(false);
+    }
+  };
+
+  const handleRetryReport = async () => {
+    if (!rangeAnalysis) return;
+
+    try {
+      setLoadingAI(true);
+      setAiReportError(null);
+
+      const sessions = await getSessions();
+      const recentSessions = sessions.slice(0, 10);
+
+      const report = await generateRangeAnalysisReport(rangeAnalysis, recentSessions);
+      if (report) {
+        setAiReport(report);
+        setAiReportError(null);
+      } else {
+        setAiReportError('AI analysis still unavailable. Please try again later.');
+      }
+    } catch (error) {
+      console.error('Failed to retry AI report:', error);
+      setAiReportError('Retry failed. Please check your connection and try again.');
     } finally {
       setLoadingAI(false);
     }
@@ -293,6 +339,22 @@ export function RangeAnalysisScreen() {
                 </Text>
               ))}
             </View>
+          </Animated.View>
+        )}
+
+        {/* AI Report Error */}
+        {aiReportError && !loadingAI && (
+          <Animated.View entering={FadeInDown.delay(400)} style={styles.reportErrorCard}>
+            <Text style={styles.reportErrorIcon}>ℹ️</Text>
+            <Text style={styles.reportErrorTitle}>AI Analysis Unavailable</Text>
+            <Text style={styles.reportErrorMessage}>{aiReportError}</Text>
+            <TouchableOpacity
+              style={styles.reportRetryButton}
+              onPress={handleRetryReport}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.reportRetryText}>Try Again</Text>
+            </TouchableOpacity>
           </Animated.View>
         )}
 
@@ -530,6 +592,44 @@ const styles = StyleSheet.create({
   emptyButtonText: {
     fontSize: 16,
     fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  reportErrorCard: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    padding: 20,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  reportErrorIcon: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  reportErrorTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#EF4444',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  reportErrorMessage: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  reportRetryButton: {
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+  },
+  reportRetryText: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
 });

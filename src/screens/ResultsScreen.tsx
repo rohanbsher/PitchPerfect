@@ -162,12 +162,15 @@ export function ResultsScreen({ route, navigation }: Props) {
     improvements: string[];
   } | null>(null);
   const [loadingFeedback, setLoadingFeedback] = useState(true);
+  const [aiFeedbackError, setAiFeedbackError] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
 
   // Generate AI feedback on mount
   useEffect(() => {
     const generateFeedback = async () => {
       try {
+        setAiFeedbackError(null); // Clear any previous errors
+
         // Load recent sessions
         const sessions = await getSessions();
         if (sessions.length === 0) {
@@ -178,9 +181,22 @@ export function ResultsScreen({ route, navigation }: Props) {
         // Get the most recent session (just completed)
         const latestSession = sessions[0];
 
-        // Skip breathing exercises (no vocal technique to analyze)
-        if (latestSession.exerciseId === 'breathing' || latestSession.notesAttempted === 0) {
+        // Breathing exercises: Not an error, but provide context
+        if (latestSession.exerciseId === 'breathing') {
           setLoadingFeedback(false);
+          setAiFeedback({
+            techniqueTip: 'Breathing exercises focus on breath control rather than pitch accuracy.',
+            recommendedExercise: 'Try a vocal exercise next to get AI technique feedback!',
+            strengths: ['Completed breathing practice'],
+            improvements: [],
+          });
+          return;
+        }
+
+        // Zero notes: Session too short for analysis
+        if (latestSession.notesAttempted === 0) {
+          setLoadingFeedback(false);
+          setAiFeedbackError('Session too short for AI analysis. Complete more notes to receive feedback.');
           return;
         }
 
@@ -189,9 +205,27 @@ export function ResultsScreen({ route, navigation }: Props) {
 
         if (feedback) {
           setAiFeedback(feedback);
+          setAiFeedbackError(null); // Success - clear any errors
+        } else {
+          // API returned null (rate limited or other issue)
+          setAiFeedbackError('AI feedback unavailable. Check your internet connection.');
         }
       } catch (error) {
         console.error('Failed to generate AI feedback:', error);
+
+        // User-friendly error messages based on error type
+        let errorMessage = 'Unable to generate AI feedback at this time.';
+
+        if (error instanceof Error) {
+          if (error.message.includes('timeout')) {
+            errorMessage = 'AI feedback timed out. Your performance data was saved.';
+          } else if (error.message.includes('network')) {
+            errorMessage = 'No internet connection. AI feedback will be available when online.';
+          }
+        }
+
+        setAiFeedbackError(errorMessage);
+        setAiFeedback(null); // Clear any stale feedback
       } finally {
         setLoadingFeedback(false);
       }
@@ -199,6 +233,32 @@ export function ResultsScreen({ route, navigation }: Props) {
 
     generateFeedback();
   }, []);
+
+  const handleRetryFeedback = async () => {
+    try {
+      setLoadingFeedback(true);
+      setAiFeedbackError(null);
+
+      const sessions = await getSessions();
+      if (sessions.length > 0) {
+        const latestSession = sessions[0];
+
+        if (latestSession.exerciseId !== 'breathing' && latestSession.notesAttempted > 0) {
+          const feedback = await generatePostSessionFeedback(latestSession, sessions.slice(1, 11));
+          if (feedback) {
+            setAiFeedback(feedback);
+          } else {
+            setAiFeedbackError('AI feedback still unavailable. Please try again later.');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to retry AI feedback:', error);
+      setAiFeedbackError('Retry failed. Please check your connection and try again.');
+    } finally {
+      setLoadingFeedback(false);
+    }
+  };
 
   const handlePracticeAgain = () => {
     navigation.replace('Main', { screen: 'Practice' });
@@ -277,6 +337,22 @@ export function ResultsScreen({ route, navigation }: Props) {
           >
             <ActivityIndicator size="small" color="#8B5CF6" />
             <Text style={styles.feedbackLoadingText}>Analyzing your performance...</Text>
+          </Animated.View>
+        ) : aiFeedbackError ? (
+          <Animated.View
+            entering={FadeInUp.delay(1000).duration(600)}
+            style={styles.feedbackErrorContainer}
+          >
+            <Text style={styles.feedbackErrorIcon}>ℹ️</Text>
+            <Text style={styles.feedbackErrorTitle}>AI Feedback Unavailable</Text>
+            <Text style={styles.feedbackErrorMessage}>{aiFeedbackError}</Text>
+            <TouchableOpacity
+              style={styles.feedbackRetryButton}
+              onPress={handleRetryFeedback}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.feedbackRetryText}>Try Again</Text>
+            </TouchableOpacity>
           </Animated.View>
         ) : aiFeedback ? (
           <Animated.View
@@ -503,6 +579,45 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.6)',
     marginTop: 12,
     textAlign: 'center',
+  },
+  feedbackErrorContainer: {
+    width: '100%',
+    marginTop: 32,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    padding: 20,
+    alignItems: 'center',
+  },
+  feedbackErrorIcon: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  feedbackErrorTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#EF4444',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  feedbackErrorMessage: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  feedbackRetryButton: {
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+  },
+  feedbackRetryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   feedbackHeader: {
     flexDirection: 'row',
