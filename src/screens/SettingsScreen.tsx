@@ -138,6 +138,78 @@ export function SettingsScreen() {
           </View>
         </View>
 
+        {/* Voice Coach Section */}
+        <Text style={styles.sectionTitle}>Voice Coach</Text>
+        <View style={styles.section}>
+          {/* Voice Coach Enabled */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Enable Voice Coach</Text>
+              <Text style={styles.settingDescription}>
+                Get natural, AI-powered voice guidance during workouts
+              </Text>
+            </View>
+            <Switch
+              value={settings.voiceCoachEnabled}
+              onValueChange={(value) => update({ voiceCoachEnabled: value })}
+              trackColor={{ false: '#3A3A3A', true: '#10B981' }}
+              thumbTintColor="#FFFFFF"
+            />
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Voice Speed */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Voice Speed</Text>
+              <Text style={styles.settingDescription}>
+                Adjust how fast the voice coach speaks
+              </Text>
+            </View>
+            <Text style={styles.volumeValue}>{settings.voiceCoachSpeed.toFixed(1)}x</Text>
+          </View>
+          <View style={styles.sliderContainer}>
+            <Slider
+              style={styles.slider}
+              minimumValue={0.5}
+              maximumValue={2.0}
+              step={0.1}
+              value={settings.voiceCoachSpeed}
+              onValueChange={(value) => update({ voiceCoachSpeed: value })}
+              minimumTrackTintColor="#10B981"
+              maximumTrackTintColor="#3A3A3A"
+              thumbTintColor="#FFFFFF"
+            />
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Voice Pitch */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Voice Pitch</Text>
+              <Text style={styles.settingDescription}>
+                Adjust the voice coach pitch (higher or lower)
+              </Text>
+            </View>
+            <Text style={styles.volumeValue}>{settings.voiceCoachPitch.toFixed(1)}x</Text>
+          </View>
+          <View style={styles.sliderContainer}>
+            <Slider
+              style={styles.slider}
+              minimumValue={0.5}
+              maximumValue={2.0}
+              step={0.1}
+              value={settings.voiceCoachPitch}
+              onValueChange={(value) => update({ voiceCoachPitch: value })}
+              minimumTrackTintColor="#10B981"
+              maximumTrackTintColor="#3A3A3A"
+              thumbTintColor="#FFFFFF"
+            />
+          </View>
+        </View>
+
         {/* Data Section */}
         <Text style={styles.sectionTitle}>Data</Text>
         <View style={styles.section}>

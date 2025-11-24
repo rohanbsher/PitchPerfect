@@ -72,6 +72,11 @@ export interface UserSettings {
   showCents: boolean;
   theme: 'dark' | 'light';
 
+  // Voice Coaching
+  voiceCoachEnabled: boolean;
+  voiceCoachSpeed: number;        // 0.5-2.0 (1.0 = normal)
+  voiceCoachPitch: number;        // 0.5-2.0 (1.0 = normal)
+
   // Notifications
   dailyReminderEnabled: boolean;
   dailyReminderTime: string;      // HH:MM format

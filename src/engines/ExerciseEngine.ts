@@ -22,6 +22,7 @@ import {
 import { SessionRecord, NoteAttempt } from '../types/userProgress';
 import { generateRealTimeCoachingTip } from '../../services/claudeAI';
 import { frequencyToNote } from '../utils/audioUtils';
+import { VoiceCoach, VoicePreferences } from '../services/voiceCoaching';
 
 // Exercise state
 export type ExerciseState = 'idle' | 'playing_reference' | 'listening' | 'evaluating' | 'complete' | 'breathing';
@@ -129,6 +130,7 @@ export class ExerciseEngine {
   private voiceSoundRef: Audio.Sound | null = null;
   private pianoVolume: number = 0.85; // 85% default
   private voiceVolume: number = 0.90; // 90% default
+  private voicePreferences: VoicePreferences = { enabled: true, speed: 0.9, pitch: 1.0 };
   private pitchSamples: number[] = [];
   private isRunning: boolean = false;
   private noteTimeout: NodeJS.Timeout | null = null;
@@ -152,10 +154,16 @@ export class ExerciseEngine {
   private lastAICoachingTime: number = 0;
   private userVocalRange: { lowest: string; highest: string } = { lowest: 'C4', highest: 'C4' };
 
-  constructor(callbacks: ExerciseCallbacks = {}, pianoVolume?: number, voiceVolume?: number) {
+  constructor(
+    callbacks: ExerciseCallbacks = {},
+    pianoVolume?: number,
+    voiceVolume?: number,
+    voicePreferences?: VoicePreferences
+  ) {
     this.callbacks = callbacks;
     if (pianoVolume !== undefined) this.pianoVolume = pianoVolume / 100;
     if (voiceVolume !== undefined) this.voiceVolume = voiceVolume / 100;
+    if (voicePreferences) this.voicePreferences = voicePreferences;
   }
 
   /**
@@ -184,7 +192,7 @@ export class ExerciseEngine {
     this.setState('breathing');
 
     // Announce breathing exercise
-    await this.playVoiceClip('breathing_intro');
+    await VoiceCoach.startBreathing(this.voicePreferences);
     await this.delay(500);
 
     // Start first phase
@@ -258,7 +266,7 @@ export class ExerciseEngine {
   private async completeBreathingExercise(): Promise<void> {
     this.callbacks.onBreathingUpdate?.(null);
 
-    await this.playVoiceClip('breathing_complete');
+    await VoiceCoach.completeBreathing(this.voicePreferences);
 
     // Check if auto-progressing to workout
     if (this.autoProgressToWorkout && this.pendingWorkout) {
@@ -320,7 +328,7 @@ export class ExerciseEngine {
     }
 
     // Announce workout start
-    await this.playVoiceClip('workout_intro');
+    await VoiceCoach.say("Let's begin your vocal workout!", this.voicePreferences);
 
     // Start first exercise
     await this.startExercise();
@@ -340,9 +348,8 @@ export class ExerciseEngine {
 
     this.currentNoteIndex = 0;
 
-    // Announce exercise
-    const exerciseKey = exercise.id.toLowerCase();
-    await this.playVoiceClip(exerciseKey);
+    // Announce exercise with natural voice
+    await VoiceCoach.announceExercise(exercise.name, this.voicePreferences);
 
     // Brief pause before starting
     await this.delay(500);
@@ -469,20 +476,21 @@ export class ExerciseEngine {
 
     // Provide feedback based on accuracy
     if (accuracy >= 90) {
-      // Great job - no verbal feedback, just move on
+      // Great job - give positive feedback
+      await VoiceCoach.provideFeedback(accuracy, targetNote.note, this.voicePreferences);
     } else if (accuracy >= 70) {
       // Good - brief encouragement occasionally
       if (Math.random() < 0.3) {
-        this.callbacks.onFeedback?.('Good!');
-        await this.playVoiceClip('good');
+        await VoiceCoach.provideFeedback(accuracy, targetNote.note, this.voicePreferences);
       }
     } else if (accuracy >= 50) {
-      // Needs work
+      // Needs work - provide guidance
       this.callbacks.onFeedback?.('Try to match the pitch');
-      await this.playVoiceClip('try_match_pitch');
+      await VoiceCoach.provideFeedback(accuracy, targetNote.note, this.voicePreferences);
     } else {
-      // Poor - no voice, just show text
+      // Poor - gentle correction with text
       this.callbacks.onFeedback?.(`Aim for ${targetNote.note}`);
+      await VoiceCoach.provideFeedback(accuracy, targetNote.note, this.voicePreferences);
     }
 
     // Request AI coaching if struggling (3+ consecutive low scores)
@@ -511,9 +519,11 @@ export class ExerciseEngine {
         currentAccuracy,
         targetNote,
         this.userVocalRange
-      ).then(tip => {
+      ).then(async tip => {
         if (tip && this.isRunning) {
           this.callbacks.onAICoaching?.(tip);
+          // Speak the AI coaching tip
+          await VoiceCoach.speakCoachingTip(tip, this.voicePreferences);
         }
       }).catch(error => {
         console.error('Failed to get AI coaching:', error);
@@ -565,7 +575,7 @@ export class ExerciseEngine {
 
     if (this.currentExerciseIndex < this.currentWorkout.exercises.length) {
       await this.delay(1000);
-      await this.playVoiceClip('next_exercise');
+      await VoiceCoach.nextExercise(this.voicePreferences);
       await this.delay(500);
       await this.startExercise();
     } else {
@@ -580,7 +590,7 @@ export class ExerciseEngine {
     this.setState('complete');
     this.callbacks.onTargetNoteChange?.(null);
 
-    await this.playVoiceClip('workout_complete');
+    await VoiceCoach.completeWorkout(this.voicePreferences);
 
     // Calculate total accuracy
     const totalAccuracy = this.exerciseAccuracies.length > 0

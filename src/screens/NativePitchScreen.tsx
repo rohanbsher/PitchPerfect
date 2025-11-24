@@ -177,7 +177,12 @@ export const NativePitchScreen: React.FC = () => {
       },
     },
     settings.pianoVolume,
-    settings.voiceVolume);
+    settings.voiceVolume,
+    {
+      enabled: settings.voiceCoachEnabled,
+      speed: settings.voiceCoachSpeed,
+      pitch: settings.voiceCoachPitch,
+    });
     };
 
     initEngine();
