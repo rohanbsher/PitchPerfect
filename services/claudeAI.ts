@@ -30,6 +30,16 @@ const canMakeAPICall = (): boolean => {
   return true;
 };
 
+// API timeout helper - prevents infinite waiting on network issues
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('API call timed out')), timeoutMs)
+    ),
+  ]);
+};
+
 // Professional vocal coach system prompt
 const COACH_SYSTEM_PROMPT = `You are a professional vocal coach with expertise in vocal technique, pitch accuracy, and breathing exercises.
 
@@ -59,23 +69,26 @@ export async function generateRealTimeCoachingTip(
   }
 
   try {
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 150,
-      system: COACH_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `During a vocal exercise, the student is struggling:
+    const message = await withTimeout(
+      client.messages.create({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 150,
+        system: COACH_SYSTEM_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: `During a vocal exercise, the student is struggling:
 - Target note: ${targetNote}
 - Current accuracy: ${currentAccuracy.toFixed(0)}%
 - Consecutive low scores: ${consecutiveLowScores}
 - Student's vocal range: ${userRange.lowest} to ${userRange.highest}
 
 Provide ONE specific technique tip (1-2 sentences) to help them match the pitch better RIGHT NOW.`,
-        },
-      ],
-    });
+          },
+        ],
+      }),
+      10000
+    );
 
     const tip = message.content[0].type === 'text' ? message.content[0].text : null;
     return tip;
@@ -203,14 +216,15 @@ export async function generatePostSessionFeedback(
     const hasImprovement = recentAccuracies.length >= 2 &&
       recentAccuracies[recentAccuracies.length - 1] > recentAccuracies[0];
 
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 500,
-      system: COACH_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `Analyze this vocal practice session:
+    const message = await withTimeout(
+      client.messages.create({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 500,
+        system: COACH_SYSTEM_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: `Analyze this vocal practice session:
 
 SESSION DATA:
 - Exercise: ${sessionRecord.exerciseName}
@@ -238,9 +252,11 @@ Format as JSON:
   "strengths": ["...", "..."],
   "improvements": ["...", "..."]
 }`,
-        },
-      ],
-    });
+          },
+        ],
+      }),
+      10000
+    );
 
     const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
 
@@ -287,14 +303,15 @@ export async function getNextExerciseRecommendation(
       accuracy: s.accuracy,
     }));
 
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 200,
-      system: COACH_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `Based on this student's recent practice history, recommend the next exercise:
+    const message = await withTimeout(
+      client.messages.create({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 200,
+        system: COACH_SYSTEM_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: `Based on this student's recent practice history, recommend the next exercise:
 
 RECENT SESSIONS (last ${recentSessions.length}):
 ${exerciseHistory.map(e => `- ${e.name}: ${e.accuracy.toFixed(0)}%`).join('\n')}
@@ -320,9 +337,11 @@ Format as JSON:
   "exerciseName": "...",
   "reason": "..."
 }`,
-        },
-      ],
-    });
+          },
+        ],
+      }),
+      10000
+    );
 
     const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
 
@@ -364,14 +383,15 @@ export async function generateRangeAnalysisReport(
   }
 
   try {
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 800,
-      system: COACH_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `Analyze this singer's vocal range performance:
+    const message = await withTimeout(
+      client.messages.create({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 800,
+        system: COACH_SYSTEM_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: `Analyze this singer's vocal range performance:
 
 CURRENT RANGE:
 - Full range: ${rangeAnalysis.currentRange.lowest} to ${rangeAnalysis.currentRange.highest}
@@ -415,9 +435,11 @@ Format as JSON:
   "recommendedExercises": ["...", "...", "..."],
   "techniqueTips": ["...", "...", "..."]
 }`,
-        },
-      ],
-    });
+          },
+        ],
+      }),
+      10000
+    );
 
     const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
 
@@ -461,23 +483,26 @@ export async function generateRangeSafetyCoaching(
   const isOutsideComfort = true; // Caller should pre-filter this
 
   try {
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 150,
-      system: COACH_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `The student is attempting a note OUTSIDE their comfortable range:
+    const message = await withTimeout(
+      client.messages.create({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 150,
+        system: COACH_SYSTEM_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: `The student is attempting a note OUTSIDE their comfortable range:
 
 TARGET NOTE: ${targetNote}
 CURRENT ACCURACY: ${currentAccuracy.toFixed(0)}%
 COMFORTABLE RANGE: ${comfortableRange.lowest} to ${comfortableRange.highest}
 
 This is at the edge of their ability. Provide ONE safety-focused tip (1-2 sentences) to help them sing this note safely without straining.`,
-        },
-      ],
-    });
+          },
+        ],
+      }),
+      10000
+    );
 
     const tip = message.content[0].type === 'text' ? message.content[0].text : null;
     return tip;
