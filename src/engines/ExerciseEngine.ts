@@ -19,10 +19,18 @@ import {
   getDefaultBreathingExercise,
   NOTE_FREQUENCIES,
 } from '../data/exercises';
-import { SessionRecord, NoteAttempt } from '../types/userProgress';
+import { SessionRecord, NoteAttempt, UserProgress } from '../types/userProgress';
 import { generateRealTimeCoachingTip } from '../../services/claudeAI';
 import { frequencyToNote } from '../utils/audioUtils';
 import { VoiceCoach, VoicePreferences } from '../services/voiceCoaching';
+import {
+  getAdaptedExercise,
+  recommendChallengeLevel,
+  ComfortableRange,
+  analyzeComfortableRange,
+  getAdaptationInfo,
+  AdaptationInfo,
+} from '../services/exerciseAdaptation';
 
 // Exercise state
 export type ExerciseState = 'idle' | 'playing_reference' | 'listening' | 'evaluating' | 'complete' | 'breathing';
@@ -45,6 +53,8 @@ export interface ExerciseCallbacks {
   onFeedback?: (message: string) => void;
   onBreathingUpdate?: (state: BreathingState | null) => void;
   onAICoaching?: (tip: string) => void;
+  onRangeAnalysis?: (range: ComfortableRange | null) => void;
+  onWorkoutAdapted?: (adaptationInfo: AdaptationInfo[]) => void;
 }
 
 // Piano samples mapping
@@ -154,16 +164,23 @@ export class ExerciseEngine {
   private lastAICoachingTime: number = 0;
   private userVocalRange: { lowest: string; highest: string } = { lowest: 'C4', highest: 'C4' };
 
+  // Range adaptation
+  private userProgress: UserProgress | null = null;
+  private originalWorkout: DailyWorkout | null = null;
+  private workoutAdaptationInfo: AdaptationInfo[] = [];
+
   constructor(
     callbacks: ExerciseCallbacks = {},
     pianoVolume?: number,
     voiceVolume?: number,
-    voicePreferences?: VoicePreferences
+    voicePreferences?: VoicePreferences,
+    userProgress?: UserProgress
   ) {
     this.callbacks = callbacks;
     if (pianoVolume !== undefined) this.pianoVolume = pianoVolume / 100;
     if (voiceVolume !== undefined) this.voiceVolume = voiceVolume / 100;
     if (voicePreferences) this.voicePreferences = voicePreferences;
+    if (userProgress) this.userProgress = userProgress;
   }
 
   /**
@@ -314,7 +331,8 @@ export class ExerciseEngine {
    * @param continueSession - If true, continues current session (for auto-progression)
    */
   async startWorkout(workout?: DailyWorkout, continueSession: boolean = false): Promise<void> {
-    this.currentWorkout = workout || getDefaultWorkout();
+    const originalWorkout = workout || getDefaultWorkout();
+    this.originalWorkout = originalWorkout;
     this.currentExerciseIndex = 0;
     this.currentNoteIndex = 0;
     this.isRunning = true;
@@ -327,8 +345,64 @@ export class ExerciseEngine {
       this.allFrequenciesSung = [];
     }
 
-    // Announce workout start
-    await VoiceCoach.say("Let's begin your vocal workout!", this.voicePreferences);
+    // Real-time range analysis and exercise adaptation
+    if (this.userProgress) {
+      const userRange = analyzeComfortableRange(this.userProgress);
+
+      if (userRange) {
+        // Notify UI of range analysis
+        this.callbacks.onRangeAnalysis?.(userRange);
+
+        // Determine challenge level based on recent performance
+        const challengeLevel = recommendChallengeLevel(this.userProgress);
+
+        // Adapt all exercises in the workout
+        const adaptedExercises: Exercise[] = [];
+        this.workoutAdaptationInfo = [];
+
+        for (const exercise of originalWorkout.exercises) {
+          const { exercise: adaptedExercise, transposition, isAdapted } = getAdaptedExercise(
+            exercise,
+            this.userProgress,
+            challengeLevel
+          );
+
+          adaptedExercises.push(adaptedExercise);
+
+          // Get adaptation info for display
+          const info = getAdaptationInfo(exercise, adaptedExercise, transposition, userRange);
+          this.workoutAdaptationInfo.push(info);
+        }
+
+        // Create adapted workout
+        this.currentWorkout = {
+          ...originalWorkout,
+          exercises: adaptedExercises,
+        };
+
+        // Notify UI of workout adaptation
+        this.callbacks.onWorkoutAdapted?.(this.workoutAdaptationInfo);
+
+        // Announce range-adapted workout
+        const adaptationSummary = this.workoutAdaptationInfo.filter(info => info.isAdapted).length;
+        if (adaptationSummary > 0) {
+          await VoiceCoach.say(
+            `I've analyzed your vocal range and adapted ${adaptationSummary} exercise${adaptationSummary > 1 ? 's' : ''} to match your comfortable range from ${userRange.lowestComfortableNote} to ${userRange.highestComfortableNote}. Let's begin!`,
+            this.voicePreferences
+          );
+        } else {
+          await VoiceCoach.say("Let's begin your vocal workout!", this.voicePreferences);
+        }
+      } else {
+        // No range data yet - use original workout
+        this.currentWorkout = originalWorkout;
+        await VoiceCoach.say("Let's begin your vocal workout!", this.voicePreferences);
+      }
+    } else {
+      // No user progress available - use original workout
+      this.currentWorkout = originalWorkout;
+      await VoiceCoach.say("Let's begin your vocal workout!", this.voicePreferences);
+    }
 
     // Start first exercise
     await this.startExercise();

@@ -27,9 +27,10 @@ import { Audio } from 'expo-av';
 import { ExerciseEngine, ExerciseState, BreathingState } from '../engines/ExerciseEngine';
 import { ExerciseNote, DAILY_WORKOUTS, getDefaultBreathingExercise } from '../data/exercises';
 import { useStorage } from '../hooks/useStorage';
-import { getUserSettings } from '../services/storage';
+import { getUserSettings, getUserProgress } from '../services/storage';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { CoachingBubble } from '../components/CoachingBubble';
+import type { ComfortableRange, AdaptationInfo } from '../services/exerciseAdaptation';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -86,6 +87,10 @@ export const NativePitchScreen: React.FC = () => {
   const [aiCoachingTip, setAiCoachingTip] = useState<string | null>(null);
   const [showAICoaching, setShowAICoaching] = useState(false);
 
+  // Range adaptation state
+  const [userRange, setUserRange] = useState<ComfortableRange | null>(null);
+  const [adaptationInfo, setAdaptationInfo] = useState<AdaptationInfo[]>([]);
+
   // Settings state for volume
   const [pianoVolume, setPianoVolume] = useState(85); // Default 85%
 
@@ -118,6 +123,7 @@ export const NativePitchScreen: React.FC = () => {
   useEffect(() => {
     const initEngine = async () => {
       const settings = await getUserSettings();
+      const progress = await getUserProgress();
       setPianoVolume(settings.pianoVolume);
 
       exerciseEngineRef.current = new ExerciseEngine({
@@ -175,6 +181,14 @@ export const NativePitchScreen: React.FC = () => {
           setShowAICoaching(false);
         }, 8000);
       },
+      onRangeAnalysis: (range) => {
+        setUserRange(range);
+        console.log('Vocal range analyzed:', range);
+      },
+      onWorkoutAdapted: (info) => {
+        setAdaptationInfo(info);
+        console.log('Workout adapted:', info);
+      },
     },
     settings.pianoVolume,
     settings.voiceVolume,
@@ -182,7 +196,8 @@ export const NativePitchScreen: React.FC = () => {
       enabled: settings.voiceCoachEnabled,
       speed: settings.voiceCoachSpeed,
       pitch: settings.voiceCoachPitch,
-    });
+    },
+    progress);
     };
 
     initEngine();
@@ -406,6 +421,19 @@ export const NativePitchScreen: React.FC = () => {
             >
               <Text style={styles.skipButtonText}>Skip to Workout →</Text>
             </TouchableOpacity>
+          </View>
+        ) : null}
+
+        {/* Range Adaptation Indicator */}
+        {userRange && adaptationInfo.length > 0 && adaptationInfo.some(info => info.isAdapted) && exerciseState !== 'idle' && !breathingState ? (
+          <View style={styles.adaptationBadge}>
+            <Text style={styles.adaptationTitle}>Adapted to Your Range</Text>
+            <Text style={styles.adaptationRange}>
+              {userRange.lowestComfortableNote} - {userRange.highestComfortableNote}
+            </Text>
+            <Text style={styles.adaptationDetail}>
+              {adaptationInfo.filter(info => info.isAdapted).length} exercise{adaptationInfo.filter(info => info.isAdapted).length > 1 ? 's' : ''} adjusted
+            </Text>
           </View>
         ) : null}
 
@@ -801,6 +829,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'rgba(255, 255, 255, 0.5)',
+  },
+  // Range adaptation badge styles
+  adaptationBadge: {
+    position: 'absolute',
+    top: 80,
+    left: 50,
+    right: 20,
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.4)',
+    borderRadius: 12,
+    padding: 12,
+    zIndex: 15,
+  },
+  adaptationTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8B5CF6',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  adaptationRange: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 2,
+  },
+  adaptationDetail: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.6)',
   },
 });
 
