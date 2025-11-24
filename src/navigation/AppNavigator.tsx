@@ -20,10 +20,8 @@ import { ResultsScreen } from '../screens/ResultsScreen';
 
 // Tab parameter list
 export type TabParamList = {
-  Home: undefined;
   Practice: undefined;
   Progress: undefined;
-  Range: undefined;
   Settings: undefined;
 };
 
@@ -45,10 +43,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 // Tab bar icon component
 const TabIcon = ({ name, focused }: { name: string; focused: boolean }) => {
   const icons: Record<string, string> = {
-    Home: '🏠',
     Practice: '🎵',
     Progress: '📊',
-    Range: '🎹',
     Settings: '⚙️',
   };
 
@@ -67,7 +63,7 @@ function TabNavigator() {
 
   return (
     <Tab.Navigator
-      initialRouteName="Home"
+      initialRouteName="Practice"
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
@@ -81,20 +77,12 @@ function TabNavigator() {
         tabBarActiveTintColor: '#10B981',
         tabBarInactiveTintColor: 'rgba(255,255,255,0.5)',
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: '600',
           marginTop: 2,
         },
       }}
     >
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          tabBarLabel: 'Home',
-          tabBarIcon: ({ focused }) => <TabIcon name="Home" focused={focused} />,
-        }}
-      />
       <Tab.Screen
         name="Practice"
         component={NativePitchScreen}
@@ -109,14 +97,6 @@ function TabNavigator() {
         options={{
           tabBarLabel: 'Progress',
           tabBarIcon: ({ focused }) => <TabIcon name="Progress" focused={focused} />,
-        }}
-      />
-      <Tab.Screen
-        name="Range"
-        component={RangeAnalysisScreen}
-        options={{
-          tabBarLabel: 'Range',
-          tabBarIcon: ({ focused }) => <TabIcon name="Range" focused={focused} />,
         }}
       />
       <Tab.Screen

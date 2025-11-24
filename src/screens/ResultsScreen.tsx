@@ -265,7 +265,7 @@ export function ResultsScreen({ route, navigation }: Props) {
   };
 
   const handleGoHome = () => {
-    navigation.replace('Main', { screen: 'Home' });
+    navigation.replace('Main', { screen: 'Practice' });
   };
 
   return (

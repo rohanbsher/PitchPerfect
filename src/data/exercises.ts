@@ -290,3 +290,114 @@ export const BREATHING_EXERCISES: Record<string, BreathingExercise> = {
 
 // Get default breathing exercise
 export const getDefaultBreathingExercise = (): BreathingExercise => BREATHING_EXERCISES.four_seven_eight;
+
+// === EXERCISE CATEGORIES ===
+
+export type ExerciseCategory = 'warmups' | 'arpeggios' | 'range' | 'breathing';
+
+export interface CategorizedExercises {
+  warmups: Exercise[];
+  arpeggios: Exercise[];
+  range: Exercise[];
+  breathing: Exercise[];
+}
+
+export const EXERCISE_CATEGORIES: CategorizedExercises = {
+  warmups: [
+    EXERCISES.warmup_scale,
+    EXERCISES.descending_scale,
+  ],
+  arpeggios: [
+    EXERCISES.major_arpeggio,
+    EXERCISES.octave_jump,
+    EXERCISES.siren,
+  ],
+  range: [
+    EXERCISES.range_test,
+    EXERCISES.extended_range,
+  ],
+  breathing: [
+    EXERCISES.warmup_scale, // Placeholder - breathing exercises are separate
+  ],
+};
+
+export const CATEGORY_INFO: Record<ExerciseCategory, { title: string; emoji: string; description: string }> = {
+  warmups: {
+    title: 'Warmups',
+    emoji: '🔥',
+    description: 'Start your practice with gentle scales',
+  },
+  arpeggios: {
+    title: 'Arpeggios & Intervals',
+    emoji: '🎹',
+    description: 'Build control and accuracy',
+  },
+  range: {
+    title: 'Range Building',
+    emoji: '🚀',
+    description: 'Expand your vocal range',
+  },
+  breathing: {
+    title: 'Breathing',
+    emoji: '💨',
+    description: 'Master breath control',
+  },
+};
+
+// === QUICK WARMUP PRESETS ===
+
+export interface QuickWarmup {
+  id: string;
+  name: string;
+  emoji: string;
+  duration: string;
+  description: string;
+  exercises: Exercise[];
+  breathingExercise?: BreathingExercise;
+}
+
+export const QUICK_WARMUPS: QuickWarmup[] = [
+  {
+    id: 'morning_warmup',
+    name: '5-Min Morning Warmup',
+    emoji: '☀️',
+    duration: '5 min',
+    description: 'Perfect way to wake up your voice',
+    breathingExercise: BREATHING_EXERCISES.four_seven_eight,
+    exercises: [
+      EXERCISES.warmup_scale,
+      EXERCISES.descending_scale,
+    ],
+  },
+  {
+    id: 'breathing_only',
+    name: 'Breathing Only',
+    emoji: '💨',
+    duration: '8 min',
+    description: 'Focus on breath control and support',
+    breathingExercise: BREATHING_EXERCISES.four_seven_eight,
+    exercises: [],
+  },
+  {
+    id: 'vocal_wakeup',
+    name: 'Vocal Wake-up',
+    emoji: '🎵',
+    duration: '7 min',
+    description: 'Quick scales and arpeggios',
+    exercises: [
+      EXERCISES.warmup_scale,
+      EXERCISES.descending_scale,
+      EXERCISES.major_arpeggio,
+    ],
+  },
+  {
+    id: 'range_check',
+    name: 'Check Your Range',
+    emoji: '📏',
+    duration: '10 min',
+    description: 'Test your full vocal range',
+    exercises: [
+      EXERCISES.range_test,
+    ],
+  },
+];

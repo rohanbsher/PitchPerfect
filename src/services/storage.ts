@@ -325,7 +325,12 @@ export async function getUserSettings(): Promise<UserSettings> {
   try {
     const data = await AsyncStorage.getItem(KEYS.USER_SETTINGS);
     if (data) {
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      // Merge with defaults to ensure all fields exist (handles new settings)
+      return {
+        ...DEFAULT_SETTINGS,
+        ...parsed,
+      };
     }
     return DEFAULT_SETTINGS;
   } catch (error) {
