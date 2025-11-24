@@ -387,7 +387,7 @@ export class ExerciseEngine {
         const adaptationSummary = this.workoutAdaptationInfo.filter(info => info.isAdapted).length;
         if (adaptationSummary > 0) {
           await VoiceCoach.say(
-            `I've analyzed your vocal range and adapted ${adaptationSummary} exercise${adaptationSummary > 1 ? 's' : ''} to match your comfortable range from ${userRange.lowestComfortableNote} to ${userRange.highestComfortableNote}. Let's begin!`,
+            `I've adapted ${adaptationSummary} exercise${adaptationSummary > 1 ? 's' : ''} to your range, ${userRange.lowestComfortableNote} to ${userRange.highestComfortableNote}. Let's begin!`,
             this.voicePreferences
           );
         } else {

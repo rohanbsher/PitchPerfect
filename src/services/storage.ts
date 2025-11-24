@@ -14,6 +14,7 @@ import {
   UserStats,
   DailyTip,
 } from '../types/userProgress';
+import { NOTE_FREQUENCIES } from '../data/exercises';
 
 // Storage keys
 const KEYS = {
@@ -233,10 +234,8 @@ function updateVocalRange(
   lowestNote: string,
   highestNote: string
 ): VocalRange {
-  const noteFrequencies: Record<string, number> = require('../data/exercises').NOTE_FREQUENCIES;
-
-  const lowestFreq = noteFrequencies[lowestNote];
-  const highestFreq = noteFrequencies[highestNote];
+  const lowestFreq = NOTE_FREQUENCIES[lowestNote];
+  const highestFreq = NOTE_FREQUENCIES[highestNote];
 
   let updated = { ...current };
 
