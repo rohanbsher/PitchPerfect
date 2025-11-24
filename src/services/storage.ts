@@ -47,8 +47,8 @@ const DEFAULT_PROGRESS: UserProgress = {
 };
 
 const DEFAULT_SETTINGS: UserSettings = {
-  pianoVolume: 70,
-  voiceVolume: 80,
+  pianoVolume: 85,
+  voiceVolume: 90,
   showNoteLabels: true,
   showCents: true,
   theme: 'dark',

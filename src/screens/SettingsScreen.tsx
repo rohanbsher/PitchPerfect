@@ -15,6 +15,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Slider from '@react-native-community/slider';
 import { useUserSettings } from '../hooks/useStorage';
 import { clearAllData } from '../services/storage';
 
@@ -81,6 +82,60 @@ export function SettingsScreen() {
             />
           </View>
 
+        </View>
+
+        {/* Audio Section */}
+        <Text style={styles.sectionTitle}>Audio</Text>
+        <View style={styles.section}>
+          {/* Piano Volume */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Piano Volume</Text>
+              <Text style={styles.settingDescription}>
+                Reference note playback volume
+              </Text>
+            </View>
+            <Text style={styles.volumeValue}>{settings.pianoVolume}%</Text>
+          </View>
+          <View style={styles.sliderContainer}>
+            <Slider
+              style={styles.slider}
+              minimumValue={0}
+              maximumValue={100}
+              step={5}
+              value={settings.pianoVolume}
+              onValueChange={(value) => update({ pianoVolume: value })}
+              minimumTrackTintColor="#10B981"
+              maximumTrackTintColor="#3A3A3A"
+              thumbTintColor="#FFFFFF"
+            />
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Voice Volume */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Voice Volume</Text>
+              <Text style={styles.settingDescription}>
+                AI voice guidance volume
+              </Text>
+            </View>
+            <Text style={styles.volumeValue}>{settings.voiceVolume}%</Text>
+          </View>
+          <View style={styles.sliderContainer}>
+            <Slider
+              style={styles.slider}
+              minimumValue={0}
+              maximumValue={100}
+              step={5}
+              value={settings.voiceVolume}
+              onValueChange={(value) => update({ voiceVolume: value })}
+              minimumTrackTintColor="#10B981"
+              maximumTrackTintColor="#3A3A3A"
+              thumbTintColor="#FFFFFF"
+            />
+          </View>
         </View>
 
         {/* Data Section */}
@@ -197,6 +252,21 @@ const styles = StyleSheet.create({
   },
   dangerText: {
     color: '#EF4444',
+  },
+  sliderContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  slider: {
+    width: '100%',
+    height: 40,
+  },
+  volumeValue: {
+    fontSize: 16,
+    color: '#10B981',
+    fontWeight: '600',
+    minWidth: 50,
+    textAlign: 'right',
   },
   divider: {
     height: 1,

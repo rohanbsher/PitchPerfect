@@ -27,6 +27,7 @@ import { Audio } from 'expo-av';
 import { ExerciseEngine, ExerciseState, BreathingState } from '../engines/ExerciseEngine';
 import { ExerciseNote, DAILY_WORKOUTS, getDefaultBreathingExercise } from '../data/exercises';
 import { useStorage } from '../hooks/useStorage';
+import { getUserSettings } from '../services/storage';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { CoachingBubble } from '../components/CoachingBubble';
 
@@ -85,6 +86,9 @@ export const NativePitchScreen: React.FC = () => {
   const [aiCoachingTip, setAiCoachingTip] = useState<string | null>(null);
   const [showAICoaching, setShowAICoaching] = useState(false);
 
+  // Settings state for volume
+  const [pianoVolume, setPianoVolume] = useState(85); // Default 85%
+
   // Shared values for animations
   const targetPitchY = useSharedValue(-100); // Off screen by default
 
@@ -112,10 +116,14 @@ export const NativePitchScreen: React.FC = () => {
 
   // Initialize exercise engine
   useEffect(() => {
-    exerciseEngineRef.current = new ExerciseEngine({
-      onStateChange: (state) => {
-        setExerciseState(state);
-      },
+    const initEngine = async () => {
+      const settings = await getUserSettings();
+      setPianoVolume(settings.pianoVolume);
+
+      exerciseEngineRef.current = new ExerciseEngine({
+        onStateChange: (state) => {
+          setExerciseState(state);
+        },
       onTargetNoteChange: (note) => {
         setTargetNote(note);
         if (note) {
@@ -167,7 +175,12 @@ export const NativePitchScreen: React.FC = () => {
           setShowAICoaching(false);
         }, 8000);
       },
-    });
+    },
+    settings.pianoVolume,
+    settings.voiceVolume);
+    };
+
+    initEngine();
 
     return () => {
       exerciseEngineRef.current?.stop();
@@ -188,7 +201,10 @@ export const NativePitchScreen: React.FC = () => {
       const sample = pianoSamples[sampleKey];
 
       if (sample) {
-        const { sound } = await Audio.Sound.createAsync(sample);
+        const { sound } = await Audio.Sound.createAsync(
+          sample,
+          { shouldPlay: false, volume: pianoVolume / 100 }
+        );
         soundRef.current = sound;
         await sound.playAsync();
 
@@ -202,7 +218,7 @@ export const NativePitchScreen: React.FC = () => {
     } catch (error) {
       console.error('Failed to play piano note:', error);
     }
-  }, []);
+  }, [pianoVolume]);
 
   // Derive Y position from frequency (runs on UI thread)
   const pitchY = useDerivedValue(() => {
@@ -378,6 +394,13 @@ export const NativePitchScreen: React.FC = () => {
             <Text style={styles.breathingCycle}>
               Cycle {breathingState.cycle} of {breathingState.totalCycles}
             </Text>
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={() => exerciseEngineRef.current?.skipToWorkout()}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.skipButtonText}>Skip to Workout →</Text>
+            </TouchableOpacity>
           </View>
         ) : null}
 
@@ -394,7 +417,8 @@ export const NativePitchScreen: React.FC = () => {
             if (exerciseEngineRef.current?.isActive()) {
               exerciseEngineRef.current.stop();
             } else {
-              setShowWorkoutMenu(true);
+              // Start integrated workout (breathing → vocal exercises)
+              exerciseEngineRef.current?.startIntegratedWorkout();
             }
           }}
           activeOpacity={0.8}
@@ -664,6 +688,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.5)',
     marginTop: 20,
+  },
+  skipButton: {
+    marginTop: 40,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#10B981',
+  },
+  skipButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10B981',
+    textAlign: 'center',
   },
   // Modal styles
   modalOverlay: {

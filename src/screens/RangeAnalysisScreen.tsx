@@ -24,6 +24,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { TabParamList } from '../navigation/AppNavigator';
 import { useStorage } from '../hooks/useStorage';
+import { getUserSettings } from '../services/storage';
 import { PianoKeyboard } from '../components/PianoKeyboard';
 import { analyzeVocalRange, RangeAnalysisResult } from '../services/rangeAnalysis';
 import { generateRangeAnalysisReport } from '../../services/claudeAI';
@@ -47,8 +48,14 @@ export function RangeAnalysisScreen() {
   const [loadingAI, setLoadingAI] = useState(false);
   const [aiReportError, setAiReportError] = useState<string | null>(null);
   const [analysisLoaded, setAnalysisLoaded] = useState(false);
+  const [pianoVolume, setPianoVolume] = useState(85);
 
   useEffect(() => {
+    const loadSettings = async () => {
+      const settings = await getUserSettings();
+      setPianoVolume(settings.pianoVolume);
+    };
+    loadSettings();
     loadRangeAnalysis();
   }, []);
 
@@ -208,6 +215,7 @@ export function RangeAnalysisScreen() {
             startNote="C2"
             endNote="C6"
             height={200}
+            pianoVolume={pianoVolume}
           />
           <View style={styles.legend}>
             <View style={styles.legendItem}>

@@ -270,7 +270,7 @@ export const BREATHING_EXERCISES: Record<string, BreathingExercise> = {
       { type: 'hold', duration: 7 },
       { type: 'exhale', duration: 8 },
     ],
-    cycles: 4,
+    cycles: 7,
   },
 
   // Box breathing

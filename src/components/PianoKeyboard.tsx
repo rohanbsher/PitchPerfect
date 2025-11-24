@@ -23,6 +23,7 @@ interface PianoKeyboardProps {
   startNote?: string; // e.g., "C2"
   endNote?: string; // e.g., "C6"
   height?: number;
+  pianoVolume?: number; // 0-100, default 85
 }
 
 // Note names in one octave
@@ -169,6 +170,7 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
   startNote = 'C2',
   endNote = 'C6',
   height = 200,
+  pianoVolume = 85,
 }) => {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
 
@@ -208,7 +210,7 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
       // In production, use actual piano samples or synthesize tones
       const { sound: newSound } = await Audio.Sound.createAsync(
         require('../../assets/audio/piano/C4.aiff'),
-        { shouldPlay: true, volume: 0.7 }
+        { shouldPlay: true, volume: pianoVolume / 100 }
       );
 
       setSound(newSound);

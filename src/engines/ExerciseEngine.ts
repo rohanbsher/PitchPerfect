@@ -127,6 +127,8 @@ export class ExerciseEngine {
   private callbacks: ExerciseCallbacks = {};
   private soundRef: Audio.Sound | null = null;
   private voiceSoundRef: Audio.Sound | null = null;
+  private pianoVolume: number = 0.85; // 85% default
+  private voiceVolume: number = 0.90; // 90% default
   private pitchSamples: number[] = [];
   private isRunning: boolean = false;
   private noteTimeout: NodeJS.Timeout | null = null;
@@ -136,6 +138,8 @@ export class ExerciseEngine {
   private currentCycle: number = 0;
   private currentPhaseIndex: number = 0;
   private breathingInterval: NodeJS.Timeout | null = null;
+  private autoProgressToWorkout: boolean = false;
+  private pendingWorkout: DailyWorkout | null = null;
 
   // Session tracking
   private sessionStartTime: number = 0;
@@ -148,8 +152,23 @@ export class ExerciseEngine {
   private lastAICoachingTime: number = 0;
   private userVocalRange: { lowest: string; highest: string } = { lowest: 'C4', highest: 'C4' };
 
-  constructor(callbacks: ExerciseCallbacks = {}) {
+  constructor(callbacks: ExerciseCallbacks = {}, pianoVolume?: number, voiceVolume?: number) {
     this.callbacks = callbacks;
+    if (pianoVolume !== undefined) this.pianoVolume = pianoVolume / 100;
+    if (voiceVolume !== undefined) this.voiceVolume = voiceVolume / 100;
+  }
+
+  /**
+   * Start an integrated workout (breathing + vocal exercises)
+   * This is the recommended entry point for a complete practice session.
+   */
+  async startIntegratedWorkout(
+    breathingExercise?: BreathingExercise,
+    workout?: DailyWorkout
+  ): Promise<void> {
+    this.autoProgressToWorkout = true;
+    this.pendingWorkout = workout || getDefaultWorkout();
+    await this.startBreathingExercise(breathingExercise);
   }
 
   /**
@@ -237,45 +256,68 @@ export class ExerciseEngine {
    * Complete breathing exercise
    */
   private async completeBreathingExercise(): Promise<void> {
-    this.setState('complete');
     this.callbacks.onBreathingUpdate?.(null);
 
     await this.playVoiceClip('breathing_complete');
 
-    const duration = Math.round((Date.now() - this.sessionStartTime) / 1000);
+    // Check if auto-progressing to workout
+    if (this.autoProgressToWorkout && this.pendingWorkout) {
+      // Reset flags
+      this.autoProgressToWorkout = false;
+      const workout = this.pendingWorkout;
+      this.pendingWorkout = null;
+      this.currentBreathingExercise = null;
 
-    // Create session record for breathing exercise
-    const session: SessionRecord = {
-      id: generateUUID(),
-      date: new Date().toISOString(),
-      exerciseId: this.currentBreathingExercise?.id || 'breathing',
-      exerciseName: this.currentBreathingExercise?.name || 'Breathing Exercise',
-      duration,
-      accuracy: 100, // Breathing exercises are always "complete"
-      notesAttempted: 0,
-      notesHit: 0,
-      noteAttempts: [],
-    };
+      // Brief pause before transitioning
+      await this.delay(1000);
 
-    this.callbacks.onSessionComplete?.(session);
-    this.callbacks.onWorkoutComplete?.(100);
+      // Start vocal workout (session continues, don't reset sessionStartTime)
+      await this.startWorkout(workout, true);
+    } else {
+      // Standalone breathing session - complete normally
+      this.setState('complete');
 
-    this.isRunning = false;
-    this.currentBreathingExercise = null;
+      const duration = Math.round((Date.now() - this.sessionStartTime) / 1000);
+
+      // Create session record for breathing exercise
+      const session: SessionRecord = {
+        id: generateUUID(),
+        date: new Date().toISOString(),
+        exerciseId: this.currentBreathingExercise?.id || 'breathing',
+        exerciseName: this.currentBreathingExercise?.name || 'Breathing Exercise',
+        duration,
+        accuracy: 100, // Breathing exercises are always "complete"
+        notesAttempted: 0,
+        notesHit: 0,
+        noteAttempts: [],
+      };
+
+      this.callbacks.onSessionComplete?.(session);
+      this.callbacks.onWorkoutComplete?.(100);
+
+      this.isRunning = false;
+      this.currentBreathingExercise = null;
+    }
   }
 
   /**
    * Start a workout
+   * @param workout - The workout to run (defaults to default workout)
+   * @param continueSession - If true, continues current session (for auto-progression)
    */
-  async startWorkout(workout?: DailyWorkout): Promise<void> {
+  async startWorkout(workout?: DailyWorkout, continueSession: boolean = false): Promise<void> {
     this.currentWorkout = workout || getDefaultWorkout();
     this.currentExerciseIndex = 0;
     this.currentNoteIndex = 0;
     this.isRunning = true;
-    this.sessionStartTime = Date.now();
-    this.noteAttempts = [];
-    this.exerciseAccuracies = [];
-    this.allFrequenciesSung = [];
+
+    // Only reset session if starting fresh (not continuing from breathing)
+    if (!continueSession) {
+      this.sessionStartTime = Date.now();
+      this.noteAttempts = [];
+      this.exerciseAccuracies = [];
+      this.allFrequenciesSung = [];
+    }
 
     // Announce workout start
     await this.playVoiceClip('workout_intro');
@@ -354,7 +396,10 @@ export class ExerciseEngine {
       }
 
       const sample = getClosestSample(noteName);
-      const { sound } = await Audio.Sound.createAsync(sample);
+      const { sound } = await Audio.Sound.createAsync(
+        sample,
+        { shouldPlay: false, volume: this.pianoVolume }
+      );
       this.soundRef = sound;
       await sound.playAsync();
 
@@ -582,6 +627,32 @@ export class ExerciseEngine {
   }
 
   /**
+   * Skip breathing exercise and jump directly to workout
+   * Only works if currently in breathing phase and auto-progression is enabled
+   */
+  async skipToWorkout(): Promise<void> {
+    if (this.state === 'breathing' && this.autoProgressToWorkout && this.pendingWorkout) {
+      // Stop breathing intervals
+      if (this.breathingInterval) {
+        clearInterval(this.breathingInterval);
+        this.breathingInterval = null;
+      }
+
+      // Clear breathing state
+      this.callbacks.onBreathingUpdate?.(null);
+      this.currentBreathingExercise = null;
+
+      // Reset auto-progression flags
+      this.autoProgressToWorkout = false;
+      const workout = this.pendingWorkout;
+      this.pendingWorkout = null;
+
+      // Start workout immediately (continuing session)
+      await this.startWorkout(workout, true);
+    }
+  }
+
+  /**
    * Stop the workout
    */
   async stop(): Promise<void> {
@@ -632,7 +703,10 @@ export class ExerciseEngine {
         return;
       }
 
-      const { sound, status } = await Audio.Sound.createAsync(clip);
+      const { sound, status } = await Audio.Sound.createAsync(
+        clip,
+        { shouldPlay: false, volume: this.voiceVolume }
+      );
       this.voiceSoundRef = sound;
       await sound.playAsync();
 
