@@ -21,6 +21,7 @@ import {
 } from '../data/exercises';
 import { SessionRecord, NoteAttempt } from '../types/userProgress';
 import { generateRealTimeCoachingTip } from '../../services/claudeAI';
+import { frequencyToNote } from '../utils/audioUtils';
 
 // Exercise state
 export type ExerciseState = 'idle' | 'playing_reference' | 'listening' | 'evaluating' | 'complete' | 'breathing';
@@ -116,17 +117,6 @@ const generateUUID = (): string => {
     const v = c === 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
-};
-
-// Helper: Get note name from frequency
-const frequencyToNote = (frequency: number): string => {
-  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-  const a4 = 440;
-  const semitones = 12 * Math.log2(frequency / a4);
-  const midiNote = Math.round(69 + semitones);
-  const octave = Math.floor((midiNote - 12) / 12);
-  const noteIndex = midiNote % 12;
-  return `${noteNames[noteIndex]}${octave}`;
 };
 
 export class ExerciseEngine {
@@ -414,11 +404,14 @@ export class ExerciseEngine {
     // Update vocal range
     if (avgFrequency > 0) {
       const noteName = frequencyToNote(avgFrequency);
-      if (avgFrequency < NOTE_FREQUENCIES[this.userVocalRange.lowest] || this.userVocalRange.lowest === 'C4') {
-        this.userVocalRange.lowest = noteName;
-      }
-      if (avgFrequency > NOTE_FREQUENCIES[this.userVocalRange.highest] || this.userVocalRange.highest === 'C4') {
-        this.userVocalRange.highest = noteName;
+      // Only update range if frequency conversion was valid
+      if (noteName) {
+        if (avgFrequency < NOTE_FREQUENCIES[this.userVocalRange.lowest] || this.userVocalRange.lowest === 'C4') {
+          this.userVocalRange.lowest = noteName;
+        }
+        if (avgFrequency > NOTE_FREQUENCIES[this.userVocalRange.highest] || this.userVocalRange.highest === 'C4') {
+          this.userVocalRange.highest = noteName;
+        }
       }
     }
 
@@ -559,8 +552,8 @@ export class ExerciseEngine {
     if (this.allFrequenciesSung.length > 0) {
       const minFreq = Math.min(...this.allFrequenciesSung);
       const maxFreq = Math.max(...this.allFrequenciesSung);
-      lowestNote = frequencyToNote(minFreq);
-      highestNote = frequencyToNote(maxFreq);
+      lowestNote = frequencyToNote(minFreq) ?? undefined;
+      highestNote = frequencyToNote(maxFreq) ?? undefined;
     }
 
     // Count notes hit (accuracy > 70%)

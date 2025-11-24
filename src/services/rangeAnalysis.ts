@@ -9,6 +9,7 @@
  */
 
 import { SessionRecord, NoteAttempt, VocalRange } from '../types/userProgress';
+import { frequencyToNote as convertFrequencyToNote } from '../utils/audioUtils';
 
 // Frequency band category based on performance
 export type FrequencyCategory = 'comfortable' | 'extended' | 'struggling' | 'untested';
@@ -81,17 +82,13 @@ export interface RangeAnalysisResult {
 
 /**
  * Convert frequency to note name
+ * Returns fallback "C4" if conversion fails (for backward compatibility)
  */
 function frequencyToNote(frequency: number): string {
-  const A4 = 440;
-  const C0 = A4 * Math.pow(2, -4.75);
-  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-
-  const h = Math.round(12 * Math.log2(frequency / C0));
-  const octave = Math.floor(h / 12);
-  const n = h % 12;
-
-  return noteNames[n] + octave;
+  const note = convertFrequencyToNote(frequency);
+  // Use fallback for backward compatibility - prevents corrupt data
+  // "C4" is safe default middle C
+  return note ?? 'C4';
 }
 
 /**

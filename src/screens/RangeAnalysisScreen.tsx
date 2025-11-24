@@ -27,6 +27,7 @@ import { useStorage } from '../hooks/useStorage';
 import { PianoKeyboard } from '../components/PianoKeyboard';
 import { analyzeVocalRange, RangeAnalysisResult } from '../services/rangeAnalysis';
 import { generateRangeAnalysisReport } from '../../services/claudeAI';
+import { SessionRecord } from '../types/userProgress';
 
 type NavigationProp = BottomTabNavigationProp<TabParamList>;
 

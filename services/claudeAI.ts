@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { NoteAttempt, SessionRecord, VocalRange } from '../src/types/userProgress';
 import { analyzeVocalRange, RangeAnalysisResult } from '../src/services/rangeAnalysis';
+import { frequencyToNote } from '../src/utils/audioUtils';
 
 // Initialize Anthropic client
 const getAnthropicClient = () => {
@@ -111,10 +112,13 @@ function analyzePerformancePatterns(noteAttempts: NoteAttempt[]): {
   const noteAccuracyMap = new Map<string, number[]>();
   noteAttempts.forEach(attempt => {
     const note = frequencyToNote(attempt.targetFrequency);
-    if (!noteAccuracyMap.has(note)) {
-      noteAccuracyMap.set(note, []);
+    // Skip invalid frequencies
+    if (note) {
+      if (!noteAccuracyMap.has(note)) {
+        noteAccuracyMap.set(note, []);
+      }
+      noteAccuracyMap.get(note)!.push(attempt.accuracy);
     }
-    noteAccuracyMap.get(note)!.push(attempt.accuracy);
   });
 
   const consistentlyLowNotes = Array.from(noteAccuracyMap.entries())
@@ -178,19 +182,6 @@ function analyzePerformancePatterns(noteAttempts: NoteAttempt[]): {
     rangeIssues,
     pitchTrend,
   };
-}
-
-// Helper: Convert frequency to note name
-function frequencyToNote(frequency: number): string {
-  const A4 = 440;
-  const C0 = A4 * Math.pow(2, -4.75);
-  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-
-  const h = Math.round(12 * Math.log2(frequency / C0));
-  const octave = Math.floor(h / 12);
-  const n = h % 12;
-
-  return noteNames[n] + octave;
 }
 
 // Generate post-session feedback with technique tips and recommendations
