@@ -20,7 +20,10 @@ import { ResultsScreen } from '../screens/ResultsScreen';
 
 // Tab parameter list
 export type TabParamList = {
-  Practice: undefined;
+  Practice: {
+    autoStartExerciseId?: string;
+    autoStartBreathingId?: string;
+  } | undefined;
   Progress: undefined;
   Settings: undefined;
 };

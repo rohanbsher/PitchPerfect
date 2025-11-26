@@ -153,9 +153,8 @@ export function RangeAnalysisScreen() {
   };
 
   const handleStartRangeTest = () => {
-    // Navigate to Practice screen with range_test exercise
-    navigation.navigate('Practice');
-    // TODO: Auto-start range_test exercise
+    // Navigate to Practice screen and auto-start range_test exercise
+    navigation.navigate('Practice', { autoStartExerciseId: 'range_test' });
   };
 
   if (isLoading || !analysisLoaded) {

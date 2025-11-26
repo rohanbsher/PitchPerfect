@@ -20,15 +20,16 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
 import { useNativePitchDetector } from '../hooks/useNativePitchDetector';
 import { Audio } from 'expo-av';
 import { ExerciseEngine, ExerciseState, BreathingState } from '../engines/ExerciseEngine';
-import { ExerciseNote, DAILY_WORKOUTS, QUICK_WARMUPS, EXERCISE_CATEGORIES, type ExerciseCategory, getDefaultBreathingExercise } from '../data/exercises';
+import { ExerciseNote, DAILY_WORKOUTS, QUICK_WARMUPS, EXERCISE_CATEGORIES, CATEGORY_INFO, EXERCISES, BREATHING_EXERCISES, type ExerciseCategory, getDefaultBreathingExercise } from '../data/exercises';
 import { useStorage } from '../hooks/useStorage';
 import { getUserSettings, getUserProgress } from '../services/storage';
-import type { RootStackParamList } from '../navigation/AppNavigator';
+import type { RootStackParamList, TabParamList } from '../navigation/AppNavigator';
 import { CoachingBubble } from '../components/CoachingBubble';
 import type { ComfortableRange, AdaptationInfo } from '../services/exerciseAdaptation';
 import { QuickWarmupCard } from '../components/QuickWarmupCard';
@@ -59,10 +60,12 @@ const ACCENT_COLOR = '#10B981';
 const TARGET_COLOR = '#8B5CF6'; // Purple for target pitch
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type PracticeRouteProps = RouteProp<TabParamList, 'Practice'>;
 
 export const NativePitchScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<PracticeRouteProps>();
 
   // Storage hook for saving sessions
   const { saveSession } = useStorage();
@@ -84,6 +87,10 @@ export const NativePitchScreen: React.FC = () => {
 
   // Workout menu state
   const [showWorkoutMenu, setShowWorkoutMenu] = useState(false);
+
+  // Exercise picker modal state
+  const [showExercisePicker, setShowExercisePicker] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | null>(null);
 
   // Breathing state
   const [breathingState, setBreathingState] = useState<BreathingState | null>(null);
@@ -218,6 +225,39 @@ export const NativePitchScreen: React.FC = () => {
     };
   }, [saveSession, navigation]);
 
+  // Auto-start exercise from navigation params (e.g., from RangeAnalysisScreen)
+  useEffect(() => {
+    if (!route.params) return;
+
+    const { autoStartExerciseId, autoStartBreathingId } = route.params;
+
+    if (autoStartExerciseId && exerciseEngineRef.current) {
+      const exercise = EXERCISES[autoStartExerciseId as keyof typeof EXERCISES];
+      if (exercise) {
+        const workout = {
+          id: `auto_${autoStartExerciseId}`,
+          name: exercise.name,
+          description: exercise.description,
+          duration: '5 min',
+          details: [exercise.description],
+          exercises: [exercise],
+        };
+        setViewMode('workout');
+        setTimeout(() => {
+          exerciseEngineRef.current?.startWorkout(workout);
+        }, 500);
+      }
+    } else if (autoStartBreathingId && exerciseEngineRef.current) {
+      const breathing = BREATHING_EXERCISES[autoStartBreathingId as keyof typeof BREATHING_EXERCISES];
+      if (breathing) {
+        setViewMode('workout');
+        setTimeout(() => {
+          exerciseEngineRef.current?.startBreathingExercise(breathing);
+        }, 500);
+      }
+    }
+  }, [route.params]);
+
   // Play piano note when tapping on C labels
   const playPianoNote = useCallback(async (noteName: string) => {
     try {
@@ -256,11 +296,22 @@ export const NativePitchScreen: React.FC = () => {
     const warmup = QUICK_WARMUPS.find(w => w.id === warmupId);
     if (!warmup) return;
 
-    if (warmup.breathingExercise && warmup.exercises.length === 0) {
-      // Breathing only - use the breathing exercise directly
+    if (warmup.breathingExercise && warmup.exercises.length > 0) {
+      // INTEGRATED: Breathing + vocal exercises (Morning Warmup)
+      const workout = {
+        id: warmup.id,
+        name: warmup.name,
+        description: warmup.description,
+        duration: warmup.duration,
+        details: [warmup.description],
+        exercises: warmup.exercises,
+      };
+      exerciseEngineRef.current?.startIntegratedWorkout(warmup.breathingExercise, workout);
+    } else if (warmup.breathingExercise && warmup.exercises.length === 0) {
+      // BREATHING ONLY
       exerciseEngineRef.current?.startBreathingExercise(warmup.breathingExercise);
     } else {
-      // Vocal exercises - create workout from warmup
+      // VOCAL ONLY
       const workout = {
         id: warmup.id,
         name: warmup.name,
@@ -273,22 +324,10 @@ export const NativePitchScreen: React.FC = () => {
     }
   }, []);
 
-  // Handle exercise category selection
+  // Handle exercise category selection - show picker modal
   const handleExerciseCategory = useCallback((category: ExerciseCategory) => {
-    // For now, start the first exercise in the category
-    // TODO: In the future, show a list of exercises to choose from
-    const exercises = EXERCISE_CATEGORIES[category];
-    if (exercises.length > 0) {
-      const workout = {
-        id: `category_${category}`,
-        name: category.charAt(0).toUpperCase() + category.slice(1),
-        description: `Practice ${category}`,
-        duration: '5 min',
-        details: [`${exercises.length} exercises`],
-        exercises: exercises,
-      };
-      exerciseEngineRef.current?.startWorkout(workout);
-    }
+    setSelectedCategory(category);
+    setShowExercisePicker(true);
   }, []);
 
   // Derive Y position from frequency (runs on UI thread)
@@ -465,6 +504,92 @@ export const NativePitchScreen: React.FC = () => {
             ))}
           </View>
         </ScrollView>
+
+        {/* Exercise Picker Modal */}
+        <Modal
+          visible={showExercisePicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowExercisePicker(false)}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setShowExercisePicker(false)}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHandle} />
+              <Text style={styles.modalTitle}>
+                {selectedCategory ? CATEGORY_INFO[selectedCategory].title : 'Choose Exercise'}
+              </Text>
+
+              {selectedCategory && selectedCategory !== 'breathing' && (
+                // Vocal exercises
+                (EXERCISE_CATEGORIES[selectedCategory] as any[]).map((exercise: any) => (
+                  <TouchableOpacity
+                    key={exercise.id}
+                    style={styles.workoutOption}
+                    onPress={() => {
+                      setShowExercisePicker(false);
+                      const workout = {
+                        id: `single_${exercise.id}`,
+                        name: exercise.name,
+                        description: exercise.description,
+                        duration: '2 min',
+                        details: [exercise.description],
+                        exercises: [exercise],
+                      };
+                      exerciseEngineRef.current?.startWorkout(workout);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.workoutHeader}>
+                      <Text style={styles.workoutName}>{exercise.name}</Text>
+                      <View style={[
+                        styles.difficultyBadge,
+                        exercise.difficulty === 'beginner' && styles.difficultyBeginner,
+                        exercise.difficulty === 'intermediate' && styles.difficultyIntermediate,
+                        exercise.difficulty === 'advanced' && styles.difficultyAdvanced,
+                      ]}>
+                        <Text style={styles.difficultyText}>{exercise.difficulty}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.workoutDetail}>{exercise.description}</Text>
+                    <Text style={styles.workoutDetail}>{exercise.notes.length} notes</Text>
+                  </TouchableOpacity>
+                ))
+              )}
+
+              {selectedCategory === 'breathing' && (
+                // Breathing exercises
+                EXERCISE_CATEGORIES.breathing.map((breathing) => (
+                  <TouchableOpacity
+                    key={breathing.id}
+                    style={styles.workoutOption}
+                    onPress={() => {
+                      setShowExercisePicker(false);
+                      exerciseEngineRef.current?.startBreathingExercise(breathing);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.workoutHeader}>
+                      <Text style={styles.workoutName}>{breathing.name}</Text>
+                      <Text style={styles.workoutDuration}>{breathing.cycles} cycles</Text>
+                    </View>
+                    <Text style={styles.workoutDetail}>{breathing.description}</Text>
+                  </TouchableOpacity>
+                ))
+              )}
+
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowExercisePicker(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Modal>
       </View>
     );
   }
@@ -1081,6 +1206,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'rgba(255, 255, 255, 0.8)',
+  },
+  // Difficulty badge styles
+  difficultyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  difficultyBeginner: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  difficultyIntermediate: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  difficultyAdvanced: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  difficultyText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.8)',
+    textTransform: 'capitalize',
   },
 });
 

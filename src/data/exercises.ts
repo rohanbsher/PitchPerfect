@@ -299,7 +299,7 @@ export interface CategorizedExercises {
   warmups: Exercise[];
   arpeggios: Exercise[];
   range: Exercise[];
-  breathing: Exercise[];
+  breathing: BreathingExercise[];
 }
 
 export const EXERCISE_CATEGORIES: CategorizedExercises = {
@@ -317,7 +317,8 @@ export const EXERCISE_CATEGORIES: CategorizedExercises = {
     EXERCISES.extended_range,
   ],
   breathing: [
-    EXERCISES.warmup_scale, // Placeholder - breathing exercises are separate
+    BREATHING_EXERCISES.four_seven_eight,
+    BREATHING_EXERCISES.box_breathing,
   ],
 };
 
@@ -359,9 +360,9 @@ export interface QuickWarmup {
 export const QUICK_WARMUPS: QuickWarmup[] = [
   {
     id: 'morning_warmup',
-    name: '5-Min Morning Warmup',
+    name: 'Morning Warmup',
     emoji: '☀️',
-    duration: '5 min',
+    duration: '4 min',
     description: 'Perfect way to wake up your voice',
     breathingExercise: BREATHING_EXERCISES.four_seven_eight,
     exercises: [
@@ -373,7 +374,7 @@ export const QUICK_WARMUPS: QuickWarmup[] = [
     id: 'breathing_only',
     name: 'Breathing Only',
     emoji: '💨',
-    duration: '8 min',
+    duration: '2 min',
     description: 'Focus on breath control and support',
     breathingExercise: BREATHING_EXERCISES.four_seven_eight,
     exercises: [],
@@ -382,7 +383,7 @@ export const QUICK_WARMUPS: QuickWarmup[] = [
     id: 'vocal_wakeup',
     name: 'Vocal Wake-up',
     emoji: '🎵',
-    duration: '7 min',
+    duration: '3 min',
     description: 'Quick scales and arpeggios',
     exercises: [
       EXERCISES.warmup_scale,
@@ -394,7 +395,7 @@ export const QUICK_WARMUPS: QuickWarmup[] = [
     id: 'range_check',
     name: 'Check Your Range',
     emoji: '📏',
-    duration: '10 min',
+    duration: '2 min',
     description: 'Test your full vocal range',
     exercises: [
       EXERCISES.range_test,
