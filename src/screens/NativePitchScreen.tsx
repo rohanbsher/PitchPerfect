@@ -11,7 +11,7 @@
  */
 
 import React, { useRef, useCallback, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Modal, Pressable, ScrollView } from 'react-native';
 import { Canvas, Path, Skia } from '@shopify/react-native-skia';
 import Animated, {
   useAnimatedStyle,
@@ -25,12 +25,14 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNativePitchDetector } from '../hooks/useNativePitchDetector';
 import { Audio } from 'expo-av';
 import { ExerciseEngine, ExerciseState, BreathingState } from '../engines/ExerciseEngine';
-import { ExerciseNote, DAILY_WORKOUTS, getDefaultBreathingExercise } from '../data/exercises';
+import { ExerciseNote, DAILY_WORKOUTS, QUICK_WARMUPS, EXERCISE_CATEGORIES, type ExerciseCategory, getDefaultBreathingExercise } from '../data/exercises';
 import { useStorage } from '../hooks/useStorage';
 import { getUserSettings, getUserProgress } from '../services/storage';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { CoachingBubble } from '../components/CoachingBubble';
 import type { ComfortableRange, AdaptationInfo } from '../services/exerciseAdaptation';
+import { QuickWarmupCard } from '../components/QuickWarmupCard';
+import { ExerciseCategoryCard } from '../components/ExerciseCategoryCard';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -76,6 +78,9 @@ export const NativePitchScreen: React.FC = () => {
   const [targetNote, setTargetNote] = useState<ExerciseNote | null>(null);
   const [feedback, setFeedback] = useState<string>('');
   const exerciseEngineRef = useRef<ExerciseEngine | null>(null);
+
+  // View mode state - toggle between home and workout view
+  const [viewMode, setViewMode] = useState<'home' | 'workout'>('home');
 
   // Workout menu state
   const [showWorkoutMenu, setShowWorkoutMenu] = useState(false);
@@ -129,6 +134,12 @@ export const NativePitchScreen: React.FC = () => {
       exerciseEngineRef.current = new ExerciseEngine({
         onStateChange: (state) => {
           setExerciseState(state);
+          // Switch to workout view when exercise starts, back to home when idle/complete
+          if (state !== 'idle' && state !== 'complete') {
+            setViewMode('workout');
+          } else if (state === 'complete') {
+            // Keep in workout view until user navigates back
+          }
         },
       onTargetNoteChange: (note) => {
         setTargetNote(note);
@@ -240,6 +251,46 @@ export const NativePitchScreen: React.FC = () => {
     }
   }, [pianoVolume]);
 
+  // Handle quick warmup selection
+  const handleQuickWarmup = useCallback((warmupId: string) => {
+    const warmup = QUICK_WARMUPS.find(w => w.id === warmupId);
+    if (!warmup) return;
+
+    if (warmup.breathingExercise && warmup.exercises.length === 0) {
+      // Breathing only - use the breathing exercise directly
+      exerciseEngineRef.current?.startBreathingExercise(warmup.breathingExercise);
+    } else {
+      // Vocal exercises - create workout from warmup
+      const workout = {
+        id: warmup.id,
+        name: warmup.name,
+        description: warmup.description,
+        duration: warmup.duration,
+        details: [warmup.description],
+        exercises: warmup.exercises,
+      };
+      exerciseEngineRef.current?.startWorkout(workout);
+    }
+  }, []);
+
+  // Handle exercise category selection
+  const handleExerciseCategory = useCallback((category: ExerciseCategory) => {
+    // For now, start the first exercise in the category
+    // TODO: In the future, show a list of exercises to choose from
+    const exercises = EXERCISE_CATEGORIES[category];
+    if (exercises.length > 0) {
+      const workout = {
+        id: `category_${category}`,
+        name: category.charAt(0).toUpperCase() + category.slice(1),
+        description: `Practice ${category}`,
+        duration: '5 min',
+        details: [`${exercises.length} exercises`],
+        exercises: exercises,
+      };
+      exerciseEngineRef.current?.startWorkout(workout);
+    }
+  }, []);
+
   // Derive Y position from frequency (runs on UI thread)
   const pitchY = useDerivedValue(() => {
     'worklet';
@@ -340,6 +391,85 @@ export const NativePitchScreen: React.FC = () => {
     );
   }
 
+  // Home View - Beautiful card-based UI
+  if (viewMode === 'home') {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <ScrollView
+          style={styles.homeScroll}
+          contentContainerStyle={styles.homeContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.homeHeader}>
+            <Text style={styles.greeting}>Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}</Text>
+            <Text style={styles.tagline}>Ready to practice?</Text>
+          </View>
+
+          {/* Quick Warmups Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Quick Warmups</Text>
+            {QUICK_WARMUPS.map((warmup) => (
+              <QuickWarmupCard
+                key={warmup.id}
+                warmup={warmup}
+                onPress={() => handleQuickWarmup(warmup.id)}
+              />
+            ))}
+          </View>
+
+          {/* Browse Exercises Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Browse Exercises</Text>
+            <View style={styles.categoriesGrid}>
+              {(Object.keys(EXERCISE_CATEGORIES) as ExerciseCategory[]).map((category) => (
+                <ExerciseCategoryCard
+                  key={category}
+                  category={category}
+                  exerciseCount={EXERCISE_CATEGORIES[category].length}
+                  onPress={() => handleExerciseCategory(category)}
+                />
+              ))}
+            </View>
+          </View>
+
+          {/* Full Workouts Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Full Workouts</Text>
+            {DAILY_WORKOUTS.map((workout) => (
+              <TouchableOpacity
+                key={workout.id}
+                style={[
+                  styles.fullWorkoutCard,
+                  workout.recommended && styles.fullWorkoutCardRecommended,
+                ]}
+                onPress={() => {
+                  exerciseEngineRef.current?.startIntegratedWorkout();
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.fullWorkoutHeader}>
+                  <Text style={styles.fullWorkoutName}>{workout.name}</Text>
+                  <Text style={styles.fullWorkoutDuration}>{workout.duration}</Text>
+                </View>
+                <Text style={styles.fullWorkoutDescription}>{workout.description}</Text>
+                {workout.details.map((detail, index) => (
+                  <Text key={index} style={styles.fullWorkoutDetail}>• {detail}</Text>
+                ))}
+                {workout.recommended && (
+                  <View style={styles.recommendedBadge}>
+                    <Text style={styles.recommendedText}>Recommended</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // Workout View - Pitch Tracker
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       {/* Full-screen tracker */}
@@ -439,27 +569,28 @@ export const NativePitchScreen: React.FC = () => {
 
       </View>
 
-      {/* Bottom control bar - always visible */}
+      {/* Bottom control bar */}
       <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={[
-            styles.workoutButton,
-            exerciseState !== 'idle' && exerciseState !== 'complete' && styles.workoutButtonActive
-          ]}
-          onPress={() => {
-            if (exerciseEngineRef.current?.isActive()) {
-              exerciseEngineRef.current.stop();
-            } else {
-              // Start integrated workout (breathing → vocal exercises)
-              exerciseEngineRef.current?.startIntegratedWorkout();
-            }
-          }}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.workoutButtonText}>
-            {exerciseState !== 'idle' && exerciseState !== 'complete' ? 'Stop' : 'Start Workout'}
-          </Text>
-        </TouchableOpacity>
+        {exerciseState !== 'idle' && exerciseState !== 'complete' ? (
+          <TouchableOpacity
+            style={[styles.workoutButton, styles.workoutButtonActive]}
+            onPress={() => {
+              exerciseEngineRef.current?.stop();
+              setViewMode('home');
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.workoutButtonText}>Stop Workout</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => setViewMode('home')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.backButtonText}>← Back to Home</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Workout Selector Modal */}
@@ -860,6 +991,96 @@ const styles = StyleSheet.create({
   adaptationDetail: {
     fontSize: 11,
     color: 'rgba(255, 255, 255, 0.6)',
+  },
+  // Home view styles
+  homeScroll: {
+    flex: 1,
+  },
+  homeContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  homeHeader: {
+    marginTop: 20,
+    marginBottom: 32,
+  },
+  greeting: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  tagline: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontWeight: '500',
+  },
+  section: {
+    marginBottom: 40,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 16,
+  },
+  categoriesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  fullWorkoutCard: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
+  fullWorkoutCardRecommended: {
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+  },
+  fullWorkoutHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  fullWorkoutName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  fullWorkoutDuration: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  fullWorkoutDescription: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  fullWorkoutDetail: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginBottom: 4,
+    lineHeight: 18,
+  },
+  backButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.8)',
   },
 });
 
