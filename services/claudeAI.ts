@@ -502,3 +502,108 @@ This is at the edge of their ability. Provide ONE safety-focused tip (1-2 senten
     return null;
   }
 }
+
+// ========== VOICE ASSISTANT CONVERSATION ==========
+
+// Message in conversation history
+export interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+// Context for voice assistant conversation
+export interface ConversationContext {
+  query: string;
+  appState: {
+    currentScreen: string;
+    isExerciseActive: boolean;
+    currentExercise?: string;
+    exerciseState?: string;
+    isBreathing: boolean;
+  };
+  userProgress: {
+    streak: number;
+    longestStreak: number;
+    totalSessions: number;
+    totalPracticeMinutes: number;
+    averageAccuracy: number;
+    vocalRange: { low: string; high: string };
+    recentSessions: { date: string; exercise: string; accuracy: number }[];
+    exercisesCompleted: number;
+  };
+  conversationHistory: ConversationMessage[];
+}
+
+// Voice assistant conversation system prompt
+const VOICE_ASSISTANT_PROMPT = `You are PitchPerfect's AI vocal coach assistant - a friendly, knowledgeable voice that helps users with their vocal training.
+
+Your personality:
+- Warm and encouraging, like a supportive coach
+- Concise - keep responses to 1-2 sentences for voice output
+- Knowledgeable about vocal techniques and training
+- Reference specific data when helpful
+
+You can help with:
+- Answering questions about the user's progress
+- Recommending exercises based on their history
+- Explaining vocal techniques
+- Providing encouragement and motivation
+- Giving tips for improvement
+
+When users want to start exercises or navigate, be encouraging - the app will handle the action.
+Don't be overly verbose - remember your response will be spoken aloud.`;
+
+/**
+ * Voice assistant conversation with Claude
+ * Used for complex queries that require AI understanding
+ */
+export async function claudeConversation(context: ConversationContext): Promise<string> {
+  const client = getAnthropicClient();
+  if (!client) {
+    throw new Error('Claude API not configured');
+  }
+
+  try {
+    // Build context-aware system prompt
+    const systemPrompt = `${VOICE_ASSISTANT_PROMPT}
+
+Current app state:
+- Screen: ${context.appState.currentScreen}
+- Exercise active: ${context.appState.isExerciseActive}
+${context.appState.currentExercise ? `- Current exercise: ${context.appState.currentExercise}` : ''}
+${context.appState.isBreathing ? '- In breathing exercise' : ''}
+
+User progress:
+- Practice streak: ${context.userProgress.streak} days (longest: ${context.userProgress.longestStreak})
+- Total sessions: ${context.userProgress.totalSessions}
+- Practice time: ${context.userProgress.totalPracticeMinutes} minutes
+- Average accuracy: ${context.userProgress.averageAccuracy}%
+- Vocal range: ${context.userProgress.vocalRange.low} to ${context.userProgress.vocalRange.high}
+- Exercises completed: ${context.userProgress.exercisesCompleted}`;
+
+    // Build messages from history + current query
+    const messages = [
+      ...context.conversationHistory.map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })),
+      { role: 'user' as const, content: context.query },
+    ];
+
+    const message = await withTimeout(
+      client.messages.create({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 150, // Keep responses short for voice
+        system: systemPrompt,
+        messages,
+      }),
+      10000
+    );
+
+    const response = message.content[0].type === 'text' ? message.content[0].text : '';
+    return response || "I'm not sure how to help with that.";
+  } catch (error) {
+    console.error('Error in voice assistant conversation:', error);
+    throw error;
+  }
+}

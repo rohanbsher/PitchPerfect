@@ -15,7 +15,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Slider from '@react-native-community/slider';
+import { CustomSlider } from '../components/CustomSlider';
 import { useUserSettings } from '../hooks/useStorage';
 import { clearAllData } from '../services/storage';
 
@@ -98,7 +98,7 @@ export function SettingsScreen() {
             <Text style={styles.volumeValue}>{settings.pianoVolume}%</Text>
           </View>
           <View style={styles.sliderContainer}>
-            <Slider
+            <CustomSlider
               style={styles.slider}
               minimumValue={0}
               maximumValue={100}
@@ -124,7 +124,7 @@ export function SettingsScreen() {
             <Text style={styles.volumeValue}>{settings.voiceVolume}%</Text>
           </View>
           <View style={styles.sliderContainer}>
-            <Slider
+            <CustomSlider
               style={styles.slider}
               minimumValue={0}
               maximumValue={100}
@@ -170,7 +170,7 @@ export function SettingsScreen() {
             <Text style={styles.volumeValue}>{settings.voiceCoachSpeed.toFixed(1)}x</Text>
           </View>
           <View style={styles.sliderContainer}>
-            <Slider
+            <CustomSlider
               style={styles.slider}
               minimumValue={0.5}
               maximumValue={2.0}
@@ -196,7 +196,7 @@ export function SettingsScreen() {
             <Text style={styles.volumeValue}>{settings.voiceCoachPitch.toFixed(1)}x</Text>
           </View>
           <View style={styles.sliderContainer}>
-            <Slider
+            <CustomSlider
               style={styles.slider}
               minimumValue={0.5}
               maximumValue={2.0}

@@ -115,6 +115,11 @@ export function analyzeComfortableRange(progress: UserProgress): ComfortableRang
     const lowestMidi = Math.min(...midiValues);
     const highestMidi = Math.max(...midiValues);
 
+    // Return null if range is degenerate (same note for both bounds)
+    if (lowestMidi === highestMidi) {
+      return null;
+    }
+
     return {
       lowestComfortableNote: midiToNote(lowestMidi),
       highestComfortableNote: midiToNote(highestMidi),
@@ -130,6 +135,11 @@ export function analyzeComfortableRange(progress: UserProgress): ComfortableRang
   const lowestMidi = Math.min(...midiValues);
   const highestMidi = Math.max(...midiValues);
   const centerMidi = Math.round((lowestMidi + highestMidi) / 2);
+
+  // Return null if range is degenerate (same note for both bounds)
+  if (lowestMidi === highestMidi) {
+    return null;
+  }
 
   return {
     lowestComfortableNote: midiToNote(lowestMidi),

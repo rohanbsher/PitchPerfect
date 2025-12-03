@@ -32,8 +32,17 @@ import {
   AdaptationInfo,
 } from '../services/exerciseAdaptation';
 
-// Exercise state
-export type ExerciseState = 'idle' | 'playing_reference' | 'listening' | 'evaluating' | 'complete' | 'breathing';
+// Exercise state (Natural Vocal Coach flow)
+export type ExerciseState =
+  | 'idle'
+  | 'demonstrating'     // NEW - coach showing full pattern
+  | 'playing_reference'
+  | 'countdown'
+  | 'listening'
+  | 'evaluating'
+  | 'full_pattern'      // NEW - user attempts full pattern
+  | 'complete'
+  | 'breathing';
 
 // Breathing state for UI
 export interface BreathingState {
@@ -52,9 +61,15 @@ export interface ExerciseCallbacks {
   onSessionComplete?: (session: SessionRecord) => void;
   onFeedback?: (message: string) => void;
   onBreathingUpdate?: (state: BreathingState | null) => void;
+  onCountdownUpdate?: (count: number | null) => void; // For 3..2..1 countdown
   onAICoaching?: (tip: string) => void;
   onRangeAnalysis?: (range: ComfortableRange | null) => void;
   onWorkoutAdapted?: (adaptationInfo: AdaptationInfo[]) => void;
+  // Natural Vocal Coach callbacks
+  onDemonstrationStart?: (exercise: Exercise, notes: ExerciseNote[]) => void;
+  onDemoNoteChange?: (noteIndex: number) => void; // Which note in demo is playing
+  onFullPatternStart?: (exercise: Exercise) => void;
+  onFullPatternComplete?: (accuracy: number) => void;
 }
 
 // Piano samples mapping
@@ -121,6 +136,17 @@ const voiceClips: Record<string, any> = {
   'try_match_pitch': require('../../assets/audio/voice/try_match_pitch.mp3'),
 };
 
+// Exercise ID to voice clip mapping (for vocal demonstrations)
+// These map exercise IDs to their corresponding vocal demonstration clips
+const exerciseVoiceClips: Record<string, string> = {
+  'warmup_scale': 'warmup_scale',
+  'descending_scale': 'descending_scale',
+  'major_arpeggio': 'major_arpeggio',
+  'octave_jump': 'octave_jump',
+  'siren': 'siren',
+  'extended_range': 'extended_range',
+};
+
 // Helper: Generate UUID
 const generateUUID = (): string => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -162,7 +188,7 @@ export class ExerciseEngine {
   // AI Coaching tracking
   private consecutiveLowScores: number = 0;
   private lastAICoachingTime: number = 0;
-  private userVocalRange: { lowest: string; highest: string } = { lowest: 'C4', highest: 'C4' };
+  private userVocalRange: { lowest: string; highest: string } = { lowest: 'C3', highest: 'C5' };
 
   // Range adaptation
   private userProgress: UserProgress | null = null;
@@ -383,9 +409,12 @@ export class ExerciseEngine {
         // Notify UI of workout adaptation
         this.callbacks.onWorkoutAdapted?.(this.workoutAdaptationInfo);
 
-        // Announce range-adapted workout
+        // Announce range-adapted workout only if user has enough history and valid range
         const adaptationSummary = this.workoutAdaptationInfo.filter(info => info.isAdapted).length;
-        if (adaptationSummary > 0) {
+        const hasEnoughHistory = this.userProgress?.sessionHistory && this.userProgress.sessionHistory.length >= 3;
+        const hasValidRange = userRange.lowestComfortableNote !== userRange.highestComfortableNote;
+
+        if (adaptationSummary > 0 && hasEnoughHistory && hasValidRange) {
           await VoiceCoach.say(
             `I've adapted ${adaptationSummary} exercise${adaptationSummary > 1 ? 's' : ''} to your range, ${userRange.lowestComfortableNote} to ${userRange.highestComfortableNote}. Let's begin!`,
             this.voicePreferences
@@ -410,6 +439,7 @@ export class ExerciseEngine {
 
   /**
    * Start current exercise
+   * Natural Vocal Coach flow: Demonstrate -> Practice note-by-note -> Full pattern
    */
   private async startExercise(): Promise<void> {
     if (!this.currentWorkout || !this.isRunning) return;
@@ -425,11 +455,81 @@ export class ExerciseEngine {
     // Announce exercise with natural voice
     await VoiceCoach.announceExercise(exercise.name, this.voicePreferences);
 
-    // Brief pause before starting
+    // Brief pause before demonstration
     await this.delay(500);
 
-    // Play first note
+    // NEW: Demonstrate the full exercise first (like a real vocal coach)
+    await this.demonstrateExercise(exercise);
+
+    // Now start note-by-note practice
     await this.playNextNote();
+  }
+
+  /**
+   * Demonstrate the full exercise pattern before user practice
+   * Like a real vocal coach: "Watch and listen, I'll show you how it goes"
+   */
+  private async demonstrateExercise(exercise: Exercise): Promise<void> {
+    console.log('[Demo] Starting demonstration for:', exercise.name);
+    if (!this.isRunning) {
+      console.log('[Demo] SKIPPED - isRunning is false');
+      return;
+    }
+
+    this.setState('demonstrating');
+    console.log('[Demo] State set to demonstrating');
+    this.callbacks.onDemonstrationStart?.(exercise, exercise.notes);
+
+    // 1. Play all notes on piano in sequence (quick succession)
+    for (let i = 0; i < exercise.notes.length; i++) {
+      if (!this.isRunning) return;
+      const note = exercise.notes[i];
+      this.callbacks.onDemoNoteChange?.(i);
+      await this.playPianoNoteQuick(note.note);
+      await this.delay(300); // Quick succession
+    }
+
+    // 2. Play vocal demonstration if available
+    const voiceClipKey = exerciseVoiceClips[exercise.id];
+    console.log('[Demo] Voice clip key for', exercise.id, ':', voiceClipKey);
+    if (voiceClipKey) {
+      await this.delay(500);
+      console.log('[Demo] Playing voice clip:', voiceClipKey);
+      await this.playVoiceClip(voiceClipKey);
+    }
+
+    // 3. "Your turn!" cue
+    console.log('[Demo] About to say "Your turn!"');
+    await this.delay(500);
+    await VoiceCoach.say("Your turn!", this.voicePreferences);
+    console.log('[Demo] Demonstration complete');
+    await this.delay(800);
+  }
+
+  /**
+   * Play a piano note quickly (for demonstration, shorter than normal)
+   */
+  private async playPianoNoteQuick(noteName: string): Promise<void> {
+    try {
+      // Stop previous sound
+      if (this.soundRef) {
+        await this.soundRef.stopAsync();
+        await this.soundRef.unloadAsync();
+      }
+
+      const sample = getClosestSample(noteName);
+      const { sound } = await Audio.Sound.createAsync(
+        sample,
+        { shouldPlay: false, volume: this.pianoVolume }
+      );
+      this.soundRef = sound;
+      await sound.playAsync();
+
+      // Wait just enough to hear the note (shorter for demo)
+      await this.delay(400);
+    } catch (error) {
+      console.error('Failed to play piano note (demo):', error);
+    }
   }
 
   /**
@@ -455,8 +555,12 @@ export class ExerciseEngine {
     // Play piano reference
     await this.playPianoNote(note.note);
 
+    // Visual countdown before listening (3...2...1...)
+    await this.runCountdown(3);
+
     // Switch to listening mode
     this.setState('listening');
+    this.callbacks.onCountdownUpdate?.(null); // Clear countdown
     this.pitchSamples = [];
 
     // Listen for the note duration
@@ -466,7 +570,22 @@ export class ExerciseEngine {
   }
 
   /**
-   * Play a piano note
+   * Run visual countdown before singing phase
+   */
+  private async runCountdown(seconds: number): Promise<void> {
+    if (!this.isRunning) return;
+
+    this.setState('countdown');
+
+    for (let i = seconds; i >= 1; i--) {
+      if (!this.isRunning) return;
+      this.callbacks.onCountdownUpdate?.(i);
+      await this.delay(700); // Slightly faster than 1 second for better UX
+    }
+  }
+
+  /**
+   * Play a piano note (Phase 4: Use actual audio duration)
    */
   private async playPianoNote(noteName: string): Promise<void> {
     try {
@@ -477,15 +596,19 @@ export class ExerciseEngine {
       }
 
       const sample = getClosestSample(noteName);
-      const { sound } = await Audio.Sound.createAsync(
+      const { sound, status } = await Audio.Sound.createAsync(
         sample,
         { shouldPlay: false, volume: this.pianoVolume }
       );
       this.soundRef = sound;
       await sound.playAsync();
 
-      // Let it play briefly
-      await this.delay(800);
+      // Use actual audio duration instead of fixed 800ms (Phase 4 fix)
+      const actualDuration = status.isLoaded && status.durationMillis
+        ? status.durationMillis
+        : 800;
+      // Wait for piano to play, with a 100ms buffer for smooth transition
+      await this.delay(Math.min(actualDuration, 1200) + 100);
     } catch (error) {
       console.error('Failed to play piano note:', error);
     }
@@ -494,9 +617,10 @@ export class ExerciseEngine {
   /**
    * Record a pitch sample from the user
    * Call this from the pitch detector callback
+   * Phase 7: Increased confidence threshold from 0.3 to 0.5 to filter background noise
    */
   recordPitch(frequency: number, confidence: number): void {
-    if (this.state === 'listening' && confidence > 0.3) {
+    if (this.state === 'listening' && confidence > 0.5) {
       this.pitchSamples.push(frequency);
       this.allFrequenciesSung.push(frequency);
     }
@@ -548,31 +672,48 @@ export class ExerciseEngine {
       this.consecutiveLowScores = 0;
     }
 
-    // Provide feedback based on accuracy
+    // Provide feedback based on accuracy (Phase 6: Improved feedback messages)
+    const userNote = avgFrequency > 0 ? frequencyToNote(avgFrequency) : null;
+    const isFlat = avgFrequency < targetNote.frequency;
+    const centsOff = avgFrequency > 0
+      ? Math.round(Math.abs(1200 * Math.log2(avgFrequency / targetNote.frequency)))
+      : 0;
+
     if (accuracy >= 90) {
       // Great job - give positive feedback
+      this.callbacks.onFeedback?.('Perfect!');
       await VoiceCoach.provideFeedback(accuracy, targetNote.note, this.voicePreferences);
     } else if (accuracy >= 70) {
-      // Good - brief encouragement occasionally
+      // Good - brief encouragement with direction
+      const direction = isFlat ? 'slightly higher' : 'slightly lower';
+      this.callbacks.onFeedback?.(`Good! Aim ${direction}`);
       if (Math.random() < 0.3) {
         await VoiceCoach.provideFeedback(accuracy, targetNote.note, this.voicePreferences);
       }
     } else if (accuracy >= 50) {
-      // Needs work - provide guidance
-      this.callbacks.onFeedback?.('Try to match the pitch');
+      // Needs work - provide specific guidance
+      const direction = isFlat ? 'higher ↑' : 'lower ↓';
+      const feedbackMsg = userNote
+        ? `You sang ${userNote} - aim ${direction} for ${targetNote.note}`
+        : `Aim ${direction} for ${targetNote.note}`;
+      this.callbacks.onFeedback?.(feedbackMsg);
       await VoiceCoach.provideFeedback(accuracy, targetNote.note, this.voicePreferences);
     } else {
-      // Poor - gentle correction with text
-      this.callbacks.onFeedback?.(`Aim for ${targetNote.note}`);
+      // Poor - gentle correction with specific info
+      const direction = isFlat ? '↑' : '↓';
+      const feedbackMsg = userNote && centsOff > 0
+        ? `${userNote} → ${targetNote.note} ${direction}`
+        : `Aim for ${targetNote.note}`;
+      this.callbacks.onFeedback?.(feedbackMsg);
       await VoiceCoach.provideFeedback(accuracy, targetNote.note, this.voicePreferences);
     }
 
     // Request AI coaching if struggling (3+ consecutive low scores)
     await this.checkForAICoaching(accuracy, targetNote.note);
 
-    // Move to next note
+    // Move to next note (Phase 4: Increased transition delay from 300ms to 500ms)
     this.currentNoteIndex++;
-    await this.delay(300);
+    await this.delay(500);
     await this.playNextNote();
   }
 
@@ -626,23 +767,30 @@ export class ExerciseEngine {
 
   /**
    * Complete current exercise
+   * Natural Vocal Coach flow: After note-by-note practice, attempt full pattern
    */
   private async completeExercise(): Promise<void> {
     if (!this.currentWorkout) return;
 
     const exercise = this.currentWorkout.exercises[this.currentExerciseIndex];
 
-    // Calculate exercise accuracy from note attempts for this exercise
+    // Calculate note-by-note practice accuracy
     const exerciseNotes = exercise.notes.length;
     const startIndex = this.noteAttempts.length - exerciseNotes;
     const exerciseAttempts = this.noteAttempts.slice(startIndex >= 0 ? startIndex : 0);
 
-    const accuracy = exerciseAttempts.length > 0
+    const practiceAccuracy = exerciseAttempts.length > 0
       ? Math.round(exerciseAttempts.reduce((sum, a) => sum + a.accuracy, 0) / exerciseAttempts.length)
       : 0;
 
-    this.exerciseAccuracies.push(accuracy);
-    this.callbacks.onExerciseComplete?.(exercise, accuracy);
+    // NEW: Now attempt the full pattern ("Put it all together!")
+    const patternAccuracy = await this.attemptFullPattern(exercise);
+
+    // Combine practice and pattern accuracy (weighted: 60% practice, 40% full pattern)
+    const combinedAccuracy = Math.round(practiceAccuracy * 0.6 + patternAccuracy * 0.4);
+
+    this.exerciseAccuracies.push(combinedAccuracy);
+    this.callbacks.onExerciseComplete?.(exercise, combinedAccuracy);
 
     // Move to next exercise
     this.currentExerciseIndex++;
@@ -655,6 +803,96 @@ export class ExerciseEngine {
     } else {
       await this.completeWorkout();
     }
+  }
+
+  /**
+   * Full pattern attempt - user sings the entire exercise in one go
+   * "Now put it all together!"
+   */
+  private async attemptFullPattern(exercise: Exercise): Promise<number> {
+    if (!this.isRunning) return 0;
+
+    this.setState('full_pattern');
+    this.callbacks.onFullPatternStart?.(exercise);
+
+    // Announce the full pattern attempt
+    await VoiceCoach.say("Now put it all together!", this.voicePreferences);
+    await this.delay(500);
+
+    // Play reference pattern once more (quick)
+    for (let i = 0; i < exercise.notes.length; i++) {
+      if (!this.isRunning) return 0;
+      this.callbacks.onDemoNoteChange?.(i);
+      await this.playPianoNoteQuick(exercise.notes[i].note);
+      await this.delay(200);
+    }
+
+    await this.delay(300);
+    await VoiceCoach.say("Sing!", this.voicePreferences);
+    await this.delay(500);
+
+    // Listen for full pattern duration
+    const totalDuration = exercise.notes.reduce((sum, n) => sum + n.duration, 0);
+    this.pitchSamples = [];
+
+    // Record pitch during full pattern attempt
+    await new Promise<void>((resolve) => {
+      this.noteTimeout = setTimeout(() => {
+        resolve();
+      }, totalDuration * 1000);
+    });
+
+    // Evaluate the full pattern
+    // Calculate accuracy against all target frequencies in sequence
+    const patternAccuracy = this.evaluateFullPattern(exercise);
+
+    // Provide feedback
+    this.callbacks.onFullPatternComplete?.(patternAccuracy);
+
+    if (patternAccuracy >= 80) {
+      this.callbacks.onFeedback?.(`Excellent! ${patternAccuracy}% on the full pattern!`);
+      await VoiceCoach.provideFeedback(patternAccuracy, exercise.name, this.voicePreferences);
+    } else if (patternAccuracy >= 60) {
+      this.callbacks.onFeedback?.(`Good effort! ${patternAccuracy}% - keep practicing`);
+      await VoiceCoach.provideFeedback(patternAccuracy, exercise.name, this.voicePreferences);
+    } else {
+      this.callbacks.onFeedback?.(`${patternAccuracy}% - you'll get it with more practice!`);
+      await VoiceCoach.provideFeedback(patternAccuracy, exercise.name, this.voicePreferences);
+    }
+
+    await this.delay(500);
+    return patternAccuracy;
+  }
+
+  /**
+   * Evaluate accuracy for full pattern attempt
+   * Divides samples into segments matching each note and calculates overall accuracy
+   */
+  private evaluateFullPattern(exercise: Exercise): number {
+    if (this.pitchSamples.length === 0) return 0;
+
+    const totalDuration = exercise.notes.reduce((sum, n) => sum + n.duration, 0);
+    const samplesPerSecond = this.pitchSamples.length / totalDuration;
+
+    let totalAccuracy = 0;
+    let sampleIndex = 0;
+
+    for (const note of exercise.notes) {
+      const samplesForNote = Math.floor(note.duration * samplesPerSecond);
+      const endIndex = Math.min(sampleIndex + samplesForNote, this.pitchSamples.length);
+      const noteSamples = this.pitchSamples.slice(sampleIndex, endIndex);
+
+      if (noteSamples.length > 0) {
+        const avgFreq = noteSamples.reduce((a, b) => a + b, 0) / noteSamples.length;
+        const centsDiff = Math.abs(1200 * Math.log2(avgFreq / note.frequency));
+        const noteAccuracy = Math.max(0, 100 - centsDiff);
+        totalAccuracy += noteAccuracy;
+      }
+
+      sampleIndex = endIndex;
+    }
+
+    return Math.round(totalAccuracy / exercise.notes.length);
   }
 
   /**
@@ -846,5 +1084,56 @@ export class ExerciseEngine {
   getCurrentDuration(): number {
     if (this.sessionStartTime === 0) return 0;
     return Math.round((Date.now() - this.sessionStartTime) / 1000);
+  }
+
+  /**
+   * Replay the current target note (Phase 2 - Hear Again button)
+   * Allows user to hear the reference note again without affecting scoring
+   */
+  async replayCurrentNote(): Promise<void> {
+    if (!this.currentWorkout || !this.isRunning) return;
+
+    const exercise = this.currentWorkout.exercises[this.currentExerciseIndex];
+    if (!exercise) return;
+
+    const note = exercise.notes[this.currentNoteIndex];
+    if (!note) return;
+
+    // Play the piano note without changing state
+    await this.playPianoNote(note.note);
+  }
+
+  /**
+   * Get current target note (for UI display)
+   */
+  getCurrentTargetNote(): ExerciseNote | null {
+    if (!this.currentWorkout) return null;
+    const exercise = this.currentWorkout.exercises[this.currentExerciseIndex];
+    if (!exercise) return null;
+    return exercise.notes[this.currentNoteIndex] || null;
+  }
+
+  /**
+   * Get current target frequency (for real-time pitch comparison)
+   */
+  getCurrentTargetFrequency(): number {
+    const note = this.getCurrentTargetNote();
+    return note?.frequency || 0;
+  }
+
+  /**
+   * Get progress info for current exercise
+   */
+  getProgressInfo(): { currentNote: number; totalNotes: number; currentExercise: number; totalExercises: number } {
+    const totalExercises = this.currentWorkout?.exercises.length || 0;
+    const currentExercise = this.currentWorkout?.exercises[this.currentExerciseIndex];
+    const totalNotes = currentExercise?.notes.length || 0;
+
+    return {
+      currentNote: this.currentNoteIndex + 1,
+      totalNotes,
+      currentExercise: this.currentExerciseIndex + 1,
+      totalExercises,
+    };
   }
 }

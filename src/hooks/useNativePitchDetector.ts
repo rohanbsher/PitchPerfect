@@ -38,9 +38,20 @@ interface UseNativePitchDetectorOptions {
   autoStart?: boolean;
 }
 
-const { PitchDetectorModule } = NativeModules as {
-  PitchDetectorModule: PitchDetectorModuleInterface;
-};
+// Lazy getter for PitchDetectorModule to avoid accessing NativeModules at import time
+let _PitchDetectorModule: PitchDetectorModuleInterface | null = null;
+
+function getPitchDetectorModule(): PitchDetectorModuleInterface | null {
+  if (_PitchDetectorModule === null) {
+    try {
+      _PitchDetectorModule = NativeModules.PitchDetectorModule as PitchDetectorModuleInterface;
+    } catch (error) {
+      console.warn('[useNativePitchDetector] Failed to get PitchDetectorModule:', error);
+      return null;
+    }
+  }
+  return _PitchDetectorModule;
+}
 
 /**
  * Hook for native pitch detection
@@ -73,6 +84,12 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
       return false;
     }
 
+    const PitchDetectorModule = getPitchDetectorModule();
+    if (!PitchDetectorModule) {
+      console.warn('PitchDetectorModule not available');
+      return false;
+    }
+
     try {
       console.log('🔐 Requesting microphone permissions...');
       const result = await PitchDetectorModule.requestPermissions();
@@ -90,6 +107,12 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
   const startDetection = useCallback(async () => {
     if (Platform.OS !== 'ios') {
       console.warn('Native pitch detector only available on iOS');
+      return;
+    }
+
+    const PitchDetectorModule = getPitchDetectorModule();
+    if (!PitchDetectorModule) {
+      console.warn('PitchDetectorModule not available');
       return;
     }
 
@@ -152,7 +175,10 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
     }
 
     // Stop native audio engine
-    PitchDetectorModule.stopPitchDetection();
+    const PitchDetectorModule = getPitchDetectorModule();
+    if (PitchDetectorModule) {
+      PitchDetectorModule.stopPitchDetection();
+    }
     isListening.value = false;
 
     // Reset values
@@ -169,6 +195,9 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (Platform.OS !== 'ios') return;
 
+      const PitchDetectorModule = getPitchDetectorModule();
+      if (!PitchDetectorModule) return;
+
       if (nextAppState === 'background' || nextAppState === 'inactive') {
         // Stop audio when app goes to background to preserve battery
         if (isListening.value) {
@@ -184,7 +213,9 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
           // Small delay to let iOS audio session settle
           resumeTimeoutRef.current = setTimeout(() => {
             try {
-              PitchDetectorModule.startPitchDetection((error, result) => {
+              const module = getPitchDetectorModule();
+              if (!module) return;
+              module.startPitchDetection((error, result) => {
                 if (error) {
                   // Audio session errors on resume are non-fatal, just log
                   console.warn('Could not resume pitch detection:', error);
@@ -215,12 +246,29 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
 
   // Auto-start on mount if requested
   useEffect(() => {
+    let mounted = true;
+    let startTimeout: NodeJS.Timeout | null = null;
+
     if (autoStart && Platform.OS === 'ios') {
-      startDetection();
+      // Add a small delay to allow the UI to fully render first
+      // This prevents crashes from native module initialization conflicts
+      startTimeout = setTimeout(() => {
+        if (mounted) {
+          try {
+            startDetection();
+          } catch (error) {
+            console.error('Failed to auto-start pitch detection:', error);
+          }
+        }
+      }, 500); // 500ms delay for stable initialization
     }
 
     // Cleanup on unmount only (empty dependency array to avoid re-running)
     return () => {
+      mounted = false;
+      if (startTimeout) {
+        clearTimeout(startTimeout);
+      }
       if (Platform.OS !== 'ios') return;
 
       // Remove event subscription
@@ -230,8 +278,15 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
       }
 
       // Stop native audio engine
-      PitchDetectorModule.stopPitchDetection();
-      console.log('🛑 Native pitch detection stopped (unmount cleanup)');
+      try {
+        const PitchDetectorModule = getPitchDetectorModule();
+        if (PitchDetectorModule) {
+          PitchDetectorModule.stopPitchDetection();
+          console.log('🛑 Native pitch detection stopped (unmount cleanup)');
+        }
+      } catch (error) {
+        console.warn('Error stopping pitch detection:', error);
+      }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -250,7 +305,7 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
     requestPermissions,
 
     // Check if native module is available
-    isAvailable: Platform.OS === 'ios' && !!PitchDetectorModule,
+    isAvailable: Platform.OS === 'ios' && !!getPitchDetectorModule(),
   };
 };
 

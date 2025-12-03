@@ -109,13 +109,15 @@ export const NativePitchScreen: React.FC = () => {
   // Shared values for animations
   const targetPitchY = useSharedValue(-100); // Off screen by default
 
-  // Use native pitch detector with AUTO-START
+  // Use native pitch detector - NO auto-start to avoid race condition with voice assistant
   const {
     frequency,
     confidence,
     isAvailable,
+    startDetection,
+    stopDetection,
   } = useNativePitchDetector({
-    autoStart: true, // Auto-start on mount
+    autoStart: false, // Disabled to prevent crash from competing native audio modules
     onPitchUpdate: (data) => {
       // Update note display when we have a confident pitch
       if (data.confidence > 0.3 && data.note) {
@@ -257,6 +259,18 @@ export const NativePitchScreen: React.FC = () => {
       }
     }
   }, [route.params]);
+
+  // Start/stop pitch detection based on exercise state
+  // This prevents the race condition with voice assistant by only starting audio when needed
+  useEffect(() => {
+    if (exerciseState !== 'idle' && exerciseState !== 'complete') {
+      // Start pitch detection when exercise begins
+      startDetection();
+    } else {
+      // Stop when exercise ends (idle or complete)
+      stopDetection();
+    }
+  }, [exerciseState, startDetection, stopDetection]);
 
   // Play piano note when tapping on C labels
   const playPianoNote = useCallback(async (noteName: string) => {
