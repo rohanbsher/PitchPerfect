@@ -28,22 +28,31 @@ export async function generateVocalCoachFeedback(
   try {
     // Prepare analysis data
     const totalNotes = noteResults.length;
-    const successfulNotes = noteResults.filter((nr) => nr.success).length;
-    const failedNotes = noteResults.filter((nr) => !nr.success);
+    const successfulNotes = noteResults.filter((nr) => nr.passed).length;
+    const failedNotes = noteResults.filter((nr) => !nr.passed);
 
     // Calculate pitch tendency (sharp vs flat)
+    // We need to compute averagePitchError from pitchReadings since it's not stored directly
     let sharpCount = 0;
     let flatCount = 0;
     let unstableCount = 0;
 
+    // Helper to calculate average pitch error from readings
+    const getAveragePitchError = (nr: NoteResult): number => {
+      if (!nr.pitchReadings || nr.pitchReadings.length === 0) return 0;
+      const totalCentsOff = nr.pitchReadings.reduce((sum, r) => sum + r.centsOff, 0);
+      return totalCentsOff / nr.pitchReadings.length;
+    };
+
     noteResults.forEach((nr) => {
-      if (nr.averagePitchError) {
-        if (Math.abs(nr.averagePitchError) > 30) {
+      const avgPitchError = getAveragePitchError(nr);
+      if (nr.pitchReadings && nr.pitchReadings.length > 0) {
+        if (Math.abs(avgPitchError) > 30) {
           unstableCount++;
         }
-        if (nr.averagePitchError > 10) {
+        if (avgPitchError > 10) {
           sharpCount++;
-        } else if (nr.averagePitchError < -10) {
+        } else if (avgPitchError < -10) {
           flatCount++;
         }
       }
@@ -52,8 +61,8 @@ export async function generateVocalCoachFeedback(
     // Identify problem notes
     const problemNotes = failedNotes
       .map((nr) => ({
-        note: nr.targetNote,
-        avgError: nr.averagePitchError || 0,
+        note: nr.noteExpected,
+        avgError: getAveragePitchError(nr),
       }))
       .slice(0, 3); // Top 3 problem notes
 
