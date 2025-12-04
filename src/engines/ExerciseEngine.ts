@@ -580,7 +580,7 @@ export class ExerciseEngine {
     for (let i = seconds; i >= 1; i--) {
       if (!this.isRunning) return;
       this.callbacks.onCountdownUpdate?.(i);
-      await this.delay(700); // Slightly faster than 1 second for better UX
+      await this.delay(1000); // Full second for better UX - gives time to prepare
     }
   }
 
@@ -711,9 +711,9 @@ export class ExerciseEngine {
     // Request AI coaching if struggling (3+ consecutive low scores)
     await this.checkForAICoaching(accuracy, targetNote.note);
 
-    // Move to next note (Phase 4: Increased transition delay from 300ms to 500ms)
+    // Move to next note (UX fix: Increased to 800ms for breathing room)
     this.currentNoteIndex++;
-    await this.delay(500);
+    await this.delay(800);
     await this.playNextNote();
   }
 

@@ -99,6 +99,10 @@ class SpeechRecognitionService {
       const text = results[0]; // Best result
       console.log('[SpeechRecognition] Final result:', text);
       this.callbacks.onResult?.(text);
+    } else {
+      // No results - treat as silence/no speech
+      console.log('[SpeechRecognition] No results (silence)');
+      this.callbacks.onResult?.('');
     }
     this.setState('idle');
   };
@@ -180,8 +184,13 @@ class SpeechRecognitionService {
         return false;
       }
 
-      // Ensure listeners are initialized
-      this.initializeListeners();
+      // Ensure listeners are initialized with error handling
+      try {
+        this.initializeListeners();
+      } catch (initError) {
+        console.warn('[SpeechRecognition] Failed to init listeners:', initError);
+        // Continue anyway - listeners may work
+      }
 
       // Check if already listening
       if (this.state === 'listening') {
@@ -189,18 +198,31 @@ class SpeechRecognitionService {
         return true;
       }
 
-      // Check permissions and availability
-      const available = await Voice.isAvailable();
-      if (!available) {
-        console.warn('[SpeechRecognition] Voice recognition not available');
-        this.callbacks.onError?.('Voice recognition not available on this device');
-        return false;
+      // Check permissions and availability with error handling
+      try {
+        const available = await Voice.isAvailable();
+        if (!available) {
+          console.warn('[SpeechRecognition] Voice recognition not available');
+          this.callbacks.onError?.('Voice recognition not available on this device');
+          return false;
+        }
+      } catch (availError: any) {
+        console.warn('[SpeechRecognition] Failed to check availability:', availError);
+        // Continue anyway - might still work
       }
 
       console.log('[SpeechRecognition] Starting...');
       this.setState('listening');
 
-      await Voice.start('en-US');
+      // Wrap Voice.start() in its own try-catch for native exceptions
+      try {
+        await Voice.start('en-US');
+      } catch (startError: any) {
+        console.error('[SpeechRecognition] Voice.start() failed:', startError);
+        this.setState('error');
+        this.callbacks.onError?.(startError.message || 'Failed to start voice recognition');
+        return false;
+      }
 
       // Start silence timeout
       this.startSilenceTimeout();

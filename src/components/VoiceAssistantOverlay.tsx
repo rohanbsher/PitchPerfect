@@ -2,7 +2,8 @@
  * Voice Assistant Overlay Component
  *
  * Full-screen overlay shown when the voice assistant is active.
- * Displays listening state, real-time transcription, and responses.
+ * Displays listening state, real-time transcription, responses, and conversation history.
+ * Supports multi-turn conversations with chat-like UI.
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -14,15 +15,18 @@ import {
   Animated,
   Dimensions,
   Modal,
+  ScrollView,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { VoiceAssistantState } from '../services/voiceAssistant';
+import { VoiceAssistantState, ConversationTurn } from '../services/voiceAssistant';
 
 interface VoiceAssistantOverlayProps {
   visible: boolean;
   state: VoiceAssistantState;
   transcript: string;
   response: string;
+  conversationHistory?: ConversationTurn[];
+  isConversationMode?: boolean;
   onClose: () => void;
 }
 
@@ -33,11 +37,23 @@ export function VoiceAssistantOverlay({
   state,
   transcript,
   response,
+  conversationHistory = [],
+  isConversationMode = false,
   onClose,
 }: VoiceAssistantOverlayProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT * 0.3)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  // Auto-scroll to bottom when conversation updates
+  useEffect(() => {
+    if (conversationHistory.length > 0) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [conversationHistory.length]);
 
   // Animate in/out
   useEffect(() => {
@@ -157,6 +173,7 @@ export function VoiceAssistantOverlay({
             style={[
               styles.content,
               { transform: [{ translateY: slideAnim }] },
+              isConversationMode && conversationHistory.length > 0 && styles.conversationContent,
             ]}
           >
             {/* Status Indicator */}
@@ -182,35 +199,68 @@ export function VoiceAssistantOverlay({
               ) : null}
             </View>
 
-            {/* Transcript */}
-            {transcript ? (
-              <View style={styles.transcriptContainer}>
-                <Text style={styles.transcriptLabel}>You said:</Text>
-                <Text style={styles.transcriptText}>"{transcript}"</Text>
-              </View>
-            ) : null}
+            {/* Conversation History */}
+            {conversationHistory.length > 0 ? (
+              <ScrollView
+                ref={scrollViewRef}
+                style={styles.conversationScrollView}
+                contentContainerStyle={styles.conversationScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {conversationHistory.map((turn) => (
+                  <View
+                    key={turn.id}
+                    style={[
+                      styles.chatBubble,
+                      turn.role === 'user' ? styles.userBubble : styles.assistantBubble,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.chatBubbleText,
+                        turn.role === 'user' ? styles.userBubbleText : styles.assistantBubbleText,
+                      ]}
+                    >
+                      {turn.content}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <>
+                {/* Single-turn transcript display */}
+                {transcript ? (
+                  <View style={styles.transcriptContainer}>
+                    <Text style={styles.transcriptLabel}>You said:</Text>
+                    <Text style={styles.transcriptText}>"{transcript}"</Text>
+                  </View>
+                ) : null}
 
-            {/* Response */}
-            {response ? (
-              <View style={styles.responseContainer}>
-                <Text style={styles.responseText}>{response}</Text>
-              </View>
-            ) : null}
+                {/* Single-turn response display */}
+                {response ? (
+                  <View style={styles.responseContainer}>
+                    <Text style={styles.responseText}>{response}</Text>
+                  </View>
+                ) : null}
+              </>
+            )}
 
-            {/* Waveform visualization placeholder */}
+            {/* Waveform visualization for listening state */}
             {state === 'listening' && (
               <View style={styles.waveformContainer}>
                 <WaveformAnimation color={statusInfo.color} />
               </View>
             )}
 
-            {/* Cancel button */}
+            {/* Cancel/Close button */}
             <TouchableOpacity
               style={styles.cancelButton}
               onPress={onClose}
               activeOpacity={0.7}
             >
-              <Text style={styles.cancelText}>Tap to cancel</Text>
+              <Text style={styles.cancelText}>
+                {isConversationMode ? 'End conversation' : 'Tap to cancel'}
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         </BlurView>
@@ -290,6 +340,46 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     minHeight: SCREEN_HEIGHT * 0.4,
     alignItems: 'center',
+  },
+  conversationContent: {
+    minHeight: SCREEN_HEIGHT * 0.55,
+    maxHeight: SCREEN_HEIGHT * 0.7,
+  },
+  conversationScrollView: {
+    width: '100%',
+    flex: 1,
+    marginBottom: 16,
+  },
+  conversationScrollContent: {
+    paddingVertical: 8,
+  },
+  chatBubble: {
+    maxWidth: '80%',
+    padding: 12,
+    borderRadius: 16,
+    marginVertical: 4,
+  },
+  userBubble: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#3B82F6',
+    borderBottomRightRadius: 4,
+  },
+  assistantBubble: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    borderBottomLeftRadius: 4,
+    borderLeftWidth: 2,
+    borderLeftColor: '#8B5CF6',
+  },
+  chatBubbleText: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  userBubbleText: {
+    color: '#FFFFFF',
+  },
+  assistantBubbleText: {
+    color: '#FFFFFF',
   },
   statusContainer: {
     alignItems: 'center',

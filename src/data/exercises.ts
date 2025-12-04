@@ -291,6 +291,156 @@ export const BREATHING_EXERCISES: Record<string, BreathingExercise> = {
 // Get default breathing exercise
 export const getDefaultBreathingExercise = (): BreathingExercise => BREATHING_EXERCISES.four_seven_eight;
 
+// === DYNAMIC RANGE-BASED EXERCISES ===
+
+/**
+ * All note names in chromatic order for MIDI conversion
+ */
+const ALL_NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+/**
+ * Convert MIDI number to note name (e.g., 60 -> "C4")
+ */
+const midiToNoteName = (midi: number): string => {
+  const octave = Math.floor(midi / 12) - 1;
+  const noteIndex = midi % 12;
+  return `${ALL_NOTES[noteIndex]}${octave}`;
+};
+
+/**
+ * Generate a 5-note ascending scale starting from a given MIDI note
+ * Uses major scale intervals (whole, whole, half, whole = 2, 2, 1, 2 semitones)
+ */
+export function generateScaleFromMidi(startMidi: number, noteDuration: number = 2): ExerciseNote[] {
+  const majorScaleIntervals = [0, 2, 4, 5, 7]; // C, D, E, F, G in semitones from root
+  const notes: ExerciseNote[] = [];
+
+  for (const interval of majorScaleIntervals) {
+    const midi = startMidi + interval;
+    const noteName = midiToNoteName(midi);
+    const frequency = NOTE_FREQUENCIES[noteName] || 261.63; // Default to C4 if not found
+
+    notes.push({
+      note: noteName,
+      frequency,
+      duration: noteDuration,
+      midi,
+    });
+  }
+
+  return notes;
+}
+
+/**
+ * Generate a personalized scale exercise based on user's vocal range
+ * The scale will start from their comfortable low note
+ */
+export function generateRangeBasedScale(
+  comfortableLow: string = 'C3',
+  comfortableHigh: string = 'C5',
+  noteDuration: number = 2
+): Exercise {
+  const lowMidi = noteToMidi(comfortableLow);
+  const highMidi = noteToMidi(comfortableHigh);
+
+  // Find a good starting point - aim for lower third of comfortable range
+  // This gives room for the 5-note scale to fit within range
+  const rangeMidi = highMidi - lowMidi;
+  const startMidi = lowMidi + Math.floor(rangeMidi * 0.2); // Start 20% up from low
+
+  // Ensure we don't go too high - scale spans 7 semitones (C to G)
+  const maxStartMidi = highMidi - 7;
+  const actualStartMidi = Math.min(startMidi, maxStartMidi);
+
+  const notes = generateScaleFromMidi(actualStartMidi, noteDuration);
+  const startNote = midiToNoteName(actualStartMidi);
+
+  return {
+    id: 'range_based_scale',
+    name: 'Your Personal Scale',
+    description: `5-note scale starting from ${startNote} in your comfortable range`,
+    difficulty: 'beginner',
+    notes,
+  };
+}
+
+/**
+ * Generate a descending scale within user's range
+ */
+export function generateRangeBasedDescendingScale(
+  comfortableLow: string = 'C3',
+  comfortableHigh: string = 'C5',
+  noteDuration: number = 2
+): Exercise {
+  const lowMidi = noteToMidi(comfortableLow);
+  const highMidi = noteToMidi(comfortableHigh);
+
+  // Start from upper portion of range
+  const rangeMidi = highMidi - lowMidi;
+  const startMidi = lowMidi + Math.floor(rangeMidi * 0.6); // Start 60% up from low
+
+  // Generate ascending scale then reverse it
+  const ascendingNotes = generateScaleFromMidi(startMidi, noteDuration);
+  const descendingNotes = [...ascendingNotes].reverse();
+
+  const startNote = midiToNoteName(startMidi + 7); // Top note of the scale
+
+  return {
+    id: 'range_based_descending',
+    name: 'Descending Scale',
+    description: `5-note descending scale from ${startNote}`,
+    difficulty: 'beginner',
+    notes: descendingNotes,
+  };
+}
+
+/**
+ * Generate a simple arpeggio within user's range (root, third, fifth, octave)
+ */
+export function generateRangeBasedArpeggio(
+  comfortableLow: string = 'C3',
+  comfortableHigh: string = 'C5',
+  noteDuration: number = 1.5
+): Exercise {
+  const lowMidi = noteToMidi(comfortableLow);
+  const highMidi = noteToMidi(comfortableHigh);
+
+  // Start from lower third of range to ensure octave fits
+  const rangeMidi = highMidi - lowMidi;
+  const startMidi = lowMidi + Math.floor(rangeMidi * 0.2);
+
+  // Ensure we have room for the octave
+  const maxStartMidi = highMidi - 12;
+  const actualStartMidi = Math.min(startMidi, maxStartMidi);
+
+  // Major arpeggio intervals: root, major 3rd, perfect 5th, octave
+  const arpeggioIntervals = [0, 4, 7, 12, 7, 4, 0];
+  const notes: ExerciseNote[] = [];
+
+  for (const interval of arpeggioIntervals) {
+    const midi = actualStartMidi + interval;
+    const noteName = midiToNoteName(midi);
+    const frequency = NOTE_FREQUENCIES[noteName] || 261.63;
+
+    notes.push({
+      note: noteName,
+      frequency,
+      duration: interval === 12 ? 2 : noteDuration, // Hold octave longer
+      midi,
+    });
+  }
+
+  const rootNote = midiToNoteName(actualStartMidi);
+
+  return {
+    id: 'range_based_arpeggio',
+    name: 'Major Arpeggio',
+    description: `${rootNote} major arpeggio up and down`,
+    difficulty: 'intermediate',
+    notes,
+  };
+}
+
 // === EXERCISE CATEGORIES ===
 
 export type ExerciseCategory = 'warmups' | 'arpeggios' | 'range' | 'breathing';
@@ -400,5 +550,13 @@ export const QUICK_WARMUPS: QuickWarmup[] = [
     exercises: [
       EXERCISES.range_test,
     ],
+  },
+  {
+    id: 'personal_scale',
+    name: 'Your Personal Scale',
+    emoji: '🎯',
+    duration: '1 min',
+    description: 'A 5-note scale in your comfortable range',
+    exercises: [], // Dynamically generated based on user's vocal range
   },
 ];

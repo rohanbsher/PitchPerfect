@@ -26,7 +26,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { useNativePitchDetector } from '../hooks/useNativePitchDetector';
 import { Audio } from 'expo-av';
 import { ExerciseEngine, ExerciseState, BreathingState } from '../engines/ExerciseEngine';
-import { ExerciseNote, DAILY_WORKOUTS, QUICK_WARMUPS, EXERCISE_CATEGORIES, CATEGORY_INFO, EXERCISES, BREATHING_EXERCISES, type ExerciseCategory, getDefaultBreathingExercise } from '../data/exercises';
+import { ExerciseNote, DAILY_WORKOUTS, QUICK_WARMUPS, EXERCISE_CATEGORIES, CATEGORY_INFO, EXERCISES, BREATHING_EXERCISES, type ExerciseCategory, getDefaultBreathingExercise, generateRangeBasedScale } from '../data/exercises';
 import { useStorage } from '../hooks/useStorage';
 import { getUserSettings, getUserProgress } from '../services/storage';
 import type { RootStackParamList, TabParamList } from '../navigation/AppNavigator';
@@ -34,6 +34,7 @@ import { CoachingBubble } from '../components/CoachingBubble';
 import type { ComfortableRange, AdaptationInfo } from '../services/exerciseAdaptation';
 import { QuickWarmupCard } from '../components/QuickWarmupCard';
 import { ExerciseCategoryCard } from '../components/ExerciseCategoryCard';
+import { VoiceCoach } from '../services/voiceCoaching';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -102,6 +103,14 @@ export const NativePitchScreen: React.FC = () => {
   // Range adaptation state
   const [userRange, setUserRange] = useState<ComfortableRange | null>(null);
   const [adaptationInfo, setAdaptationInfo] = useState<AdaptationInfo[]>([]);
+
+  // Progress indicator state
+  const [progressInfo, setProgressInfo] = useState<{
+    currentNote: number;
+    totalNotes: number;
+    currentExercise: number;
+    totalExercises: number;
+  } | null>(null);
 
   // Settings state for volume
   const [pianoVolume, setPianoVolume] = useState(85); // Default 85%
@@ -178,6 +187,11 @@ export const NativePitchScreen: React.FC = () => {
           await saveSession(session);
           console.log('Session saved:', session.id, 'Accuracy:', session.accuracy);
 
+          // If this was a range test, announce the results
+          if (session.exerciseId === 'range_check' && session.lowestNote && session.highestNote) {
+            await VoiceCoach.announceRangeResults(session.lowestNote, session.highestNote);
+          }
+
           // Navigate to Results screen with session data
           navigation.navigate('Results', {
             accuracy: session.accuracy,
@@ -185,6 +199,8 @@ export const NativePitchScreen: React.FC = () => {
             notesAttempted: session.notesAttempted,
             duration: session.duration,
             exerciseName: session.exerciseName,
+            lowestNote: session.lowestNote,
+            highestNote: session.highestNote,
           });
         } catch (error) {
           console.error('Failed to save session:', error);
@@ -272,6 +288,18 @@ export const NativePitchScreen: React.FC = () => {
     }
   }, [exerciseState, startDetection, stopDetection]);
 
+  // Update progress info when exercise state changes
+  useEffect(() => {
+    if (exerciseState !== 'idle' && exerciseState !== 'complete' && exerciseState !== 'breathing') {
+      const info = exerciseEngineRef.current?.getProgressInfo();
+      if (info) {
+        setProgressInfo(info);
+      }
+    } else if (exerciseState === 'idle' || exerciseState === 'complete') {
+      setProgressInfo(null);
+    }
+  }, [exerciseState, targetNote]);
+
   // Play piano note when tapping on C labels
   const playPianoNote = useCallback(async (noteName: string) => {
     try {
@@ -306,9 +334,51 @@ export const NativePitchScreen: React.FC = () => {
   }, [pianoVolume]);
 
   // Handle quick warmup selection
-  const handleQuickWarmup = useCallback((warmupId: string) => {
+  const handleQuickWarmup = useCallback(async (warmupId: string) => {
     const warmup = QUICK_WARMUPS.find(w => w.id === warmupId);
     if (!warmup) return;
+
+    // Special handling for personal_scale - generate dynamic exercise
+    if (warmupId === 'personal_scale') {
+      // Fetch user's vocal range
+      const progress = await getUserProgress();
+      const comfortableLow = progress.vocalRange?.comfortableLow || 'C3';
+      const comfortableHigh = progress.vocalRange?.comfortableHigh || 'C5';
+
+      // Generate personalized scale exercise
+      const personalExercise = generateRangeBasedScale(comfortableLow, comfortableHigh, 2);
+
+      // Personalized greeting before starting
+      await VoiceCoach.greetForPersonalScale();
+
+      const workout = {
+        id: 'personal_scale',
+        name: 'Your Personal Scale',
+        description: `Scale from ${comfortableLow} to ${comfortableHigh}`,
+        duration: '1 min',
+        details: ['Personalized 5-note scale in your comfortable range'],
+        exercises: [personalExercise],
+      };
+      exerciseEngineRef.current?.startWorkout(workout);
+      return;
+    }
+
+    // Special handling for range_check - explain what we're doing
+    if (warmupId === 'range_check') {
+      // Voice greeting explaining the range test
+      await VoiceCoach.greetForRangeTest();
+
+      const workout = {
+        id: warmup.id,
+        name: warmup.name,
+        description: warmup.description,
+        duration: warmup.duration,
+        details: [warmup.description],
+        exercises: warmup.exercises,
+      };
+      exerciseEngineRef.current?.startWorkout(workout);
+      return;
+    }
 
     if (warmup.breathingExercise && warmup.exercises.length > 0) {
       // INTEGRATED: Breathing + vocal exercises (Morning Warmup)
@@ -651,6 +721,17 @@ export const NativePitchScreen: React.FC = () => {
           </View>
         ) : null}
 
+        {/* Hear Again button - allows user to replay the reference note */}
+        {(exerciseState === 'listening' || exerciseState === 'playing_reference') && !breathingState ? (
+          <TouchableOpacity
+            style={styles.hearAgainButton}
+            onPress={() => exerciseEngineRef.current?.replayCurrentNote()}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.hearAgainText}>Hear Again</Text>
+          </TouchableOpacity>
+        ) : null}
+
         {/* Feedback display */}
         {feedback ? (
           <View style={styles.feedbackContainer}>
@@ -669,6 +750,20 @@ export const NativePitchScreen: React.FC = () => {
                exerciseState === 'listening' ? 'Sing!' :
                exerciseState === 'evaluating' ? '...' : ''}
             </Text>
+          </View>
+        ) : null}
+
+        {/* Progress indicator - shows current note and exercise progress */}
+        {progressInfo && !breathingState ? (
+          <View style={styles.progressIndicator}>
+            <Text style={styles.progressText}>
+              Note {progressInfo.currentNote} of {progressInfo.totalNotes}
+            </Text>
+            {progressInfo.totalExercises > 1 ? (
+              <Text style={styles.progressSubtext}>
+                Exercise {progressInfo.currentExercise} of {progressInfo.totalExercises}
+              </Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -944,6 +1039,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: 'rgba(255, 255, 255, 0.6)',
+  },
+  hearAgainButton: {
+    position: 'absolute',
+    bottom: 160,
+    right: 20,
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.5)',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    zIndex: 25,
+  },
+  hearAgainText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8B5CF6',
+  },
+  progressIndicator: {
+    position: 'absolute',
+    top: 45,
+    left: 50,
+    zIndex: 20,
+  },
+  progressText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.5)',
+  },
+  progressSubtext: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.35)',
+    marginTop: 2,
   },
   bottomBar: {
     paddingHorizontal: 20,

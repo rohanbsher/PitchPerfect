@@ -3,10 +3,11 @@
  *
  * React hook for managing voice assistant state and interactions.
  * Provides a clean interface for components to use the voice assistant.
+ * Supports multi-turn conversations with conversation history.
  */
 
 import React, { useState, useEffect, useCallback, useRef, createContext, useContext, ReactNode } from 'react';
-import { voiceAssistant, VoiceAssistantState } from '../services/voiceAssistant';
+import { voiceAssistant, VoiceAssistantState, ConversationTurn } from '../services/voiceAssistant';
 import { appController } from '../services/appController';
 import { ExerciseEngine } from '../engines/ExerciseEngine';
 
@@ -15,16 +16,19 @@ interface UseVoiceAssistantReturn {
   state: VoiceAssistantState;
   isActive: boolean;
   isAvailable: boolean;
+  isConversationMode: boolean;
 
   // Display data
   transcript: string;
   response: string;
   error: string | null;
+  conversationHistory: ConversationTurn[];
 
   // Actions
   activate: () => Promise<void>;
   deactivate: () => Promise<void>;
   toggle: () => Promise<void>;
+  endConversation: () => Promise<void>;
 
   // Integration
   setExerciseEngine: (engine: ExerciseEngine | null) => void;
@@ -38,6 +42,8 @@ export function useVoiceAssistant(): UseVoiceAssistantReturn {
   const [transcript, setTranscript] = useState('');
   const [response, setResponse] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [conversationHistory, setConversationHistory] = useState<ConversationTurn[]>([]);
+  const [isConversationMode, setIsConversationMode] = useState(false);
   const isInitialized = useRef(false);
 
   // Initialize voice assistant
@@ -53,6 +59,13 @@ export function useVoiceAssistant(): UseVoiceAssistantReturn {
         if (newState !== 'error') {
           setError(null);
         }
+        // Update conversation mode
+        setIsConversationMode(voiceAssistant.isInConversationMode());
+        // Clear conversation when going idle
+        if (newState === 'idle') {
+          setConversationHistory([]);
+          setIsConversationMode(false);
+        }
       },
       onTranscript: (text, isFinal) => {
         setTranscript(text);
@@ -66,6 +79,10 @@ export function useVoiceAssistant(): UseVoiceAssistantReturn {
       },
       onError: (errorMessage) => {
         setError(errorMessage);
+      },
+      onConversationUpdate: (turns) => {
+        setConversationHistory(turns);
+        setIsConversationMode(voiceAssistant.isInConversationMode());
       },
     });
 
@@ -85,9 +102,14 @@ export function useVoiceAssistant(): UseVoiceAssistantReturn {
     setResponse('');
     setError(null);
 
-    const success = await voiceAssistant.activate();
-    if (!success) {
-      setError('Could not start voice recognition. Please check your microphone permissions.');
+    try {
+      const success = await voiceAssistant.activate();
+      if (!success) {
+        setError('Could not start voice recognition. Please check your microphone permissions.');
+      }
+    } catch (error: any) {
+      console.error('[useVoiceAssistant] Activation error:', error);
+      setError(error.message || 'Voice assistant failed to start. Please try again.');
     }
   }, []);
 
@@ -105,6 +127,14 @@ export function useVoiceAssistant(): UseVoiceAssistantReturn {
       await activate();
     }
   }, [activate, deactivate]);
+
+  // End conversation explicitly
+  const endConversation = useCallback(async () => {
+    await voiceAssistant.deactivate();
+    setConversationHistory([]);
+    setIsConversationMode(false);
+    setState('idle');
+  }, []);
 
   // Set exercise engine for app controller
   const setExerciseEngine = useCallback((engine: ExerciseEngine | null) => {
@@ -126,16 +156,19 @@ export function useVoiceAssistant(): UseVoiceAssistantReturn {
     state,
     isActive: state !== 'idle' && state !== 'error',
     isAvailable,
+    isConversationMode,
 
     // Display data
     transcript,
     response,
     error,
+    conversationHistory,
 
     // Actions
     activate,
     deactivate,
     toggle,
+    endConversation,
 
     // Integration
     setExerciseEngine,

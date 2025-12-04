@@ -2,10 +2,11 @@
  * Voice Coaching Service
  *
  * Provides natural, varied voice coaching using Text-to-Speech.
- * Replaces robotic pre-recorded voice clips with dynamic, contextual feedback.
+ * Uses Premium iOS voices for natural, conversational output.
  */
 
 import * as Speech from 'expo-speech';
+import { Audio } from 'expo-av';
 
 // Voice preferences
 export interface VoicePreferences {
@@ -17,77 +18,133 @@ export interface VoicePreferences {
 
 const DEFAULT_PREFERENCES: VoicePreferences = {
   enabled: true,
-  speed: 0.9, // Slightly slower for clarity
-  pitch: 1.0,
+  speed: 0.95, // Natural conversational speed
+  pitch: 1.05, // Slightly higher for warmth
 };
 
+// Premium iOS voices (sorted by quality/naturalness)
+// These are the enhanced/premium voices available on iOS
+const PREFERRED_VOICES = [
+  'com.apple.voice.premium.en-US.Zoe',      // Very natural female
+  'com.apple.voice.premium.en-US.Evan',     // Very natural male
+  'com.apple.ttsbundle.siri_Nicky_en-US_compact', // Siri Nicky (conversational)
+  'com.apple.ttsbundle.siri_Aaron_en-US_compact', // Siri Aaron (conversational)
+  'com.apple.voice.enhanced.en-US.Samantha', // Samantha Enhanced
+  'com.apple.voice.enhanced.en-US.Alex',     // Alex Enhanced
+  'com.apple.voice.compact.en-US.Samantha',  // Samantha (fallback)
+];
+
+// Cache the selected voice
+let selectedVoice: string | null = null;
+let voicesInitialized = false;
+
 /**
- * Phrase variations for natural, non-repetitive coaching
+ * Phrase variations for natural, conversational coaching
+ * Written to sound warm and encouraging like a real vocal coach
  */
 const PHRASE_VARIATIONS = {
-  // Exercise introductions
-  exerciseIntro: [
-    "Let's practice {exercise}.",
-    "Time for {exercise}.",
-    "Now we'll work on {exercise}.",
-    "Ready for {exercise}?",
+  // Personalized workout greeting - warm and encouraging
+  workoutGreeting: [
+    "Hey! Let's warm up your voice today.",
+    "Great to see you! Ready to practice?",
+    "Alright, let's get that voice warmed up!",
+    "Hey there! Time to work on your voice.",
+    "Welcome back! Let's make some great sounds today.",
   ],
 
-  // Breathing exercise
+  // Personalized scale greeting - specific to their range
+  personalScaleGreeting: [
+    "I've got a scale just for you, in your comfortable range.",
+    "Let's start with notes that fit your voice perfectly.",
+    "Here's a scale customized for your vocal range.",
+    "We'll work in your sweet spot today.",
+  ],
+
+  // Range test greeting - explain what we're doing
+  rangeTestGreeting: [
+    "Let's find your vocal range! Sing each note as I play it. Don't worry if some are too high or low.",
+    "Time to discover your range. Match each note I play. It's okay if you can't hit them all!",
+    "Let's map out your voice. Sing along with each piano note. Just do your best!",
+  ],
+
+  // Range test complete - announce results
+  rangeTestComplete: [
+    "Great job! Your range goes from {low} to {high}.",
+    "Nicely done! You can sing from {low} up to {high}.",
+    "All done! Your comfortable range is {low} to {high}.",
+  ],
+
+  // Exercise introductions - warm and inviting
+  exerciseIntro: [
+    "Alright, let's work on {exercise}.",
+    "Okay, time for {exercise}!",
+    "Now let's practice {exercise}.",
+    "Ready? Here comes {exercise}.",
+    "Next up is {exercise}.",
+  ],
+
+  // Breathing exercise - calming tone
   breathingIntro: [
-    "Let's start with breathing to warm up your voice.",
-    "We'll begin with some breathing exercises.",
-    "Time to warm up with controlled breathing.",
+    "Let's start by centering your breath.",
+    "Take a moment to breathe and relax.",
+    "We'll warm up with some breathing first.",
+    "Let's get your breath support ready.",
   ],
   breathingComplete: [
-    "Great breathing! Your voice is warmed up.",
-    "Excellent breath control. Let's move to singing.",
-    "Perfect! You're ready for vocal exercises.",
+    "Great! Your voice is warmed up now.",
+    "Nice breathing! Let's start singing.",
+    "Perfect. You're ready to sing.",
+    "Excellent breath control. Here we go!",
   ],
 
-  // Workout transitions
+  // Workout transitions - encouraging
   nextExercise: [
-    "Moving on to the next exercise.",
-    "Let's try something new.",
-    "Ready for the next one?",
+    "Nice! Moving on.",
+    "Great, let's keep going.",
+    "Okay, next one!",
+    "You're doing well. Next exercise!",
   ],
   workoutComplete: [
-    "Excellent work! You've completed your session.",
-    "Great practice session! You're done for today.",
-    "Fantastic! That's a wrap for this workout.",
+    "Amazing work today! You should be proud.",
+    "Great session! Your voice is sounding better already.",
+    "Awesome job! That's a wrap for today.",
+    "Fantastic practice! Keep up the momentum.",
   ],
 
-  // Positive feedback (high accuracy)
+  // Positive feedback (high accuracy) - enthusiastic
   excellent: [
-    "Excellent!",
-    "Perfect pitch!",
-    "Beautiful!",
-    "You nailed it!",
-    "Spot on!",
-    "That was great!",
+    "Yes! That was perfect!",
+    "Beautiful! Right on pitch.",
+    "Spot on! Great job!",
+    "Nailed it!",
+    "Perfect! Love that.",
+    "Exactly right!",
   ],
 
-  // Good feedback (medium-high accuracy)
+  // Good feedback (medium-high accuracy) - supportive
   good: [
-    "Good job!",
-    "Nice work!",
+    "Good! Keep it up.",
+    "Nice one!",
+    "That's it!",
     "Well done!",
-    "You're getting it!",
-    "Keep it up!",
+    "Getting there!",
+    "Good work!",
   ],
 
-  // Encouraging feedback (medium accuracy)
+  // Encouraging feedback (medium accuracy) - constructive
   tryAgain: [
-    "Almost there, try to match the pitch.",
-    "Good effort, focus on the target note.",
-    "You're close, listen carefully to the piano.",
+    "Close! Try to match the pitch a bit more.",
+    "Almost! Listen to the target note again.",
+    "Good effort! Focus on the reference tone.",
+    "You're getting there. Listen carefully.",
   ],
 
-  // Gentle correction (low accuracy)
+  // Gentle correction (low accuracy) - supportive
   needsWork: [
-    "Focus on matching the pitch you hear.",
-    "Listen to the reference note and try again.",
-    "Take a breath and match the tone.",
+    "That's okay. Listen to the note and try again.",
+    "Take your time. Match what you hear.",
+    "No worries! Focus on the piano note.",
+    "Let's try that one again together.",
   ],
 };
 
@@ -109,7 +166,74 @@ function getRandomPhrase(key: keyof typeof PHRASE_VARIATIONS, replacements?: Rec
 }
 
 /**
- * Speak text using TTS with user preferences
+ * Initialize and select the best available premium voice
+ */
+async function initializeVoice(): Promise<void> {
+  if (voicesInitialized) return;
+
+  try {
+    const voices = await Speech.getAvailableVoicesAsync();
+    console.log('[Voice] Available voices:', voices.length);
+
+    // Find the best available voice from our preferred list
+    for (const preferredId of PREFERRED_VOICES) {
+      const found = voices.find(v => v.identifier === preferredId);
+      if (found) {
+        selectedVoice = found.identifier;
+        console.log('[Voice] Selected premium voice:', found.name || found.identifier);
+        break;
+      }
+    }
+
+    // If no premium voice found, try to find any enhanced US English voice
+    if (!selectedVoice) {
+      const usVoices = voices.filter(v =>
+        v.language?.startsWith('en') &&
+        (v.identifier?.includes('enhanced') || v.identifier?.includes('premium') || v.quality === 'Enhanced')
+      );
+      if (usVoices.length > 0) {
+        selectedVoice = usVoices[0].identifier;
+        console.log('[Voice] Selected fallback voice:', usVoices[0].name || selectedVoice);
+      }
+    }
+
+    // Log all available voices for debugging
+    const enhancedVoices = voices.filter(v =>
+      v.language?.startsWith('en') &&
+      (v.identifier?.includes('enhanced') || v.identifier?.includes('premium') || v.identifier?.includes('siri'))
+    );
+    console.log('[Voice] Enhanced EN voices available:', enhancedVoices.map(v => ({
+      id: v.identifier,
+      name: v.name,
+      quality: v.quality
+    })));
+
+    voicesInitialized = true;
+  } catch (error) {
+    console.warn('[Voice] Failed to initialize voices:', error);
+    voicesInitialized = true; // Mark as initialized to prevent retry loops
+  }
+}
+
+/**
+ * Configure audio session for TTS playback
+ * This ensures TTS plays at full volume and doesn't conflict with other audio
+ */
+async function configureAudioSession(): Promise<void> {
+  try {
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: false, // Not recording during TTS
+      playsInSilentModeIOS: true, // Play even if muted
+      staysActiveInBackground: false,
+      shouldDuckAndroid: true,
+    });
+  } catch (error) {
+    console.warn('[Voice] Audio session config failed:', error);
+  }
+}
+
+/**
+ * Speak text using TTS with premium voice
  */
 export async function speak(text: string, preferences: VoicePreferences = DEFAULT_PREFERENCES): Promise<void> {
   if (!preferences.enabled) {
@@ -118,20 +242,32 @@ export async function speak(text: string, preferences: VoicePreferences = DEFAUL
   }
 
   try {
+    // Initialize voice selection if not done
+    await initializeVoice();
+
+    // Configure audio session for clear playback
+    await configureAudioSession();
+
     // Check if speech is already in progress
     const isSpeaking = await Speech.isSpeakingAsync();
     if (isSpeaking) {
-      // Stop current speech before starting new one
       await Speech.stop();
+      // Small delay to ensure previous speech is fully stopped
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
+
+    // Use selected premium voice or user preference
+    const voiceToUse = preferences.voice || selectedVoice || undefined;
+
+    console.log('[Voice] Speaking:', text.substring(0, 50) + '...', 'voice:', voiceToUse);
 
     await Speech.speak(text, {
       language: 'en-US',
       pitch: preferences.pitch,
       rate: preferences.speed,
-      voice: preferences.voice,
+      voice: voiceToUse,
       onDone: () => {
-        console.log('[Voice] Finished:', text);
+        console.log('[Voice] Finished speaking');
       },
       onError: (error) => {
         console.warn('[Voice] TTS error:', error);
@@ -170,6 +306,38 @@ export async function getAvailableVoices(): Promise<Speech.Voice[]> {
  */
 
 export const VoiceCoach = {
+  /**
+   * Greet user when starting a workout
+   */
+  greetUser: async (prefs?: VoicePreferences) => {
+    const text = getRandomPhrase('workoutGreeting');
+    await speak(text, prefs);
+  },
+
+  /**
+   * Greet user for personalized scale exercise
+   */
+  greetForPersonalScale: async (prefs?: VoicePreferences) => {
+    const text = getRandomPhrase('personalScaleGreeting');
+    await speak(text, prefs);
+  },
+
+  /**
+   * Greet user for range test
+   */
+  greetForRangeTest: async (prefs?: VoicePreferences) => {
+    const text = getRandomPhrase('rangeTestGreeting');
+    await speak(text, prefs);
+  },
+
+  /**
+   * Announce range test results
+   */
+  announceRangeResults: async (lowNote: string, highNote: string, prefs?: VoicePreferences) => {
+    const text = getRandomPhrase('rangeTestComplete', { low: lowNote, high: highNote });
+    await speak(text, prefs);
+  },
+
   /**
    * Announce exercise start
    */
@@ -248,6 +416,16 @@ export const VoiceCoach = {
    * Stop all speech
    */
   stop: stopSpeaking,
+
+  /**
+   * Initialize voice system (call early for faster first speech)
+   */
+  initialize: initializeVoice,
+
+  /**
+   * Get currently selected voice info
+   */
+  getSelectedVoice: () => selectedVoice,
 };
 
-export { DEFAULT_PREFERENCES };
+export { DEFAULT_PREFERENCES, initializeVoice };

@@ -5,6 +5,8 @@
  * Falls back to Claude AI for complex or ambiguous queries.
  */
 
+import { ConversationContext } from './conversationState';
+
 // Workout intent types
 export type WorkoutType = 'quick_warmup' | 'morning' | 'full' | string;
 export type ScreenType = 'progress' | 'settings' | 'home' | 'practice';
@@ -40,6 +42,10 @@ export type Intent =
   // Help
   | { type: 'help' }
   | { type: 'what_can_you_do' }
+  // Contextual responses (for multi-turn conversations)
+  | { type: 'affirmative' }
+  | { type: 'negative' }
+  | { type: 'select_option'; index: number }
   // Unknown (fallback to AI)
   | { type: 'unknown'; text: string };
 
@@ -252,6 +258,102 @@ const INTENT_PATTERNS: IntentPattern[] = [
   },
 ];
 
+// ===== Contextual Patterns for Multi-turn Conversations =====
+
+const CONTEXTUAL_PATTERNS = {
+  // Affirmative responses
+  affirmative: /^(yes|yeah|yep|yup|sure|okay|ok|go\s*ahead|let'?s\s*do\s*it|sounds?\s*good|absolutely|definitely|please|do\s*it|that'?s?\s*right|correct|uh\s*huh)/i,
+
+  // Negative responses
+  negative: /^(no|nope|nah|not\s*now|cancel|never\s*mind|forget\s*it|don'?t|stop|wait|hold\s*on|actually\s*no)/i,
+
+  // Option selection patterns
+  selectFirst: /^(the\s+)?first(\s+one)?|number\s*1|option\s*1|one|1st/i,
+  selectSecond: /^(the\s+)?second(\s+one)?|number\s*2|option\s*2|two|2nd/i,
+  selectThird: /^(the\s+)?third(\s+one)?|number\s*3|option\s*3|three|3rd/i,
+  selectFourth: /^(the\s+)?fourth(\s+one)?|number\s*4|option\s*4|four|4th/i,
+
+  // Relative references (for following up on suggestions)
+  thatOne: /^(that\s*one|that|this\s*one|this)/i,
+  lastOne: /^(the\s+)?last(\s+one)?/i,
+};
+
+/**
+ * Parse intent with conversation context for multi-turn support
+ * First checks contextual patterns if expecting a response, then falls back to regular parsing
+ */
+export function parseIntentWithContext(
+  text: string,
+  context: ConversationContext | null
+): Intent {
+  const normalizedText = text.trim();
+
+  if (!normalizedText) {
+    return { type: 'unknown', text: '' };
+  }
+
+  // If we're expecting a response (user was asked a question or given options)
+  if (context?.expectingResponse) {
+    console.log('[IntentParser] Checking contextual patterns (expecting response)');
+
+    // Check for affirmative response
+    if (CONTEXTUAL_PATTERNS.affirmative.test(normalizedText)) {
+      console.log('[IntentParser] Matched affirmative');
+      return { type: 'affirmative' };
+    }
+
+    // Check for negative response
+    if (CONTEXTUAL_PATTERNS.negative.test(normalizedText)) {
+      console.log('[IntentParser] Matched negative');
+      return { type: 'negative' };
+    }
+
+    // Check for option selection
+    if (context.lastOfferedOptions.length > 0) {
+      // First option
+      if (CONTEXTUAL_PATTERNS.selectFirst.test(normalizedText)) {
+        console.log('[IntentParser] Matched select option 1');
+        return { type: 'select_option', index: 0 };
+      }
+      // Second option
+      if (context.lastOfferedOptions.length >= 2 && CONTEXTUAL_PATTERNS.selectSecond.test(normalizedText)) {
+        console.log('[IntentParser] Matched select option 2');
+        return { type: 'select_option', index: 1 };
+      }
+      // Third option
+      if (context.lastOfferedOptions.length >= 3 && CONTEXTUAL_PATTERNS.selectThird.test(normalizedText)) {
+        console.log('[IntentParser] Matched select option 3');
+        return { type: 'select_option', index: 2 };
+      }
+      // Fourth option
+      if (context.lastOfferedOptions.length >= 4 && CONTEXTUAL_PATTERNS.selectFourth.test(normalizedText)) {
+        console.log('[IntentParser] Matched select option 4');
+        return { type: 'select_option', index: 3 };
+      }
+      // "That one" or "this one" - treat as selecting suggested action or first option
+      if (CONTEXTUAL_PATTERNS.thatOne.test(normalizedText)) {
+        console.log('[IntentParser] Matched "that one" - selecting first option');
+        return { type: 'select_option', index: 0 };
+      }
+      // "Last one" - select last available option
+      if (CONTEXTUAL_PATTERNS.lastOne.test(normalizedText)) {
+        const lastIndex = context.lastOfferedOptions.length - 1;
+        console.log('[IntentParser] Matched "last one" - selecting option', lastIndex + 1);
+        return { type: 'select_option', index: lastIndex };
+      }
+    }
+
+    // If there's a suggested action and user says "that one" or "this one"
+    if (context.lastSuggestedAction && CONTEXTUAL_PATTERNS.thatOne.test(normalizedText)) {
+      console.log('[IntentParser] Matched "that one" with suggested action');
+      return { type: 'affirmative' };
+    }
+  }
+
+  // Fall back to regular intent parsing (works for both contextual and non-contextual queries)
+  return parseIntent(normalizedText);
+}
+
 /**
  * Parse spoken text into an intent
  */
@@ -344,6 +446,12 @@ export function describeIntent(intent: Intent): string {
     case 'help':
     case 'what_can_you_do':
       return 'Getting help';
+    case 'affirmative':
+      return 'Confirmed';
+    case 'negative':
+      return 'Declined';
+    case 'select_option':
+      return `Selected option ${intent.index + 1}`;
     case 'unknown':
       return 'Unknown command';
   }
@@ -361,4 +469,40 @@ export function requiresAIResponse(intent: Intent): boolean {
     intent.type === 'general_question' ||
     intent.type === 'unknown'
   );
+}
+
+/**
+ * Check if intent is a contextual response (yes/no/option selection)
+ */
+export function isContextualResponse(intent: Intent): boolean {
+  return (
+    intent.type === 'affirmative' ||
+    intent.type === 'negative' ||
+    intent.type === 'select_option'
+  );
+}
+
+/**
+ * Check if intent is a quick command that should auto-close
+ * (vs conversational queries that should keep listening)
+ */
+export function isQuickCommand(intent: Intent): boolean {
+  const quickCommandTypes = [
+    'start_workout',
+    'start_exercise',
+    'start_breathing',
+    'stop',
+    'pause',
+    'resume',
+    'skip',
+    'skip_breathing',
+    'replay_note',
+    'next_exercise',
+    'navigate',
+    'go_back',
+    'show_results',
+    'adjust_volume',
+    'toggle_voice_coach',
+  ];
+  return quickCommandTypes.includes(intent.type);
 }

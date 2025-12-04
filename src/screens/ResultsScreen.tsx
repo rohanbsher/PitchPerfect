@@ -149,7 +149,12 @@ export function ResultsScreen({ route, navigation }: Props) {
     notesAttempted = 0,
     duration = 0,
     exerciseName = 'Practice Session',
+    lowestNote,
+    highestNote,
   } = route.params || {};
+
+  // Check if this is a range test result
+  const hasRangeData = lowestNote && highestNote;
 
   const message = getMessage(accuracy);
   const { getSessions } = useStorage();
@@ -163,7 +168,7 @@ export function ResultsScreen({ route, navigation }: Props) {
   } | null>(null);
   const [loadingFeedback, setLoadingFeedback] = useState(true);
   const [aiFeedbackError, setAiFeedbackError] = useState<string | null>(null);
-  const [showFeedback, setShowFeedback] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(true);
 
   // Generate AI feedback on mount
   useEffect(() => {
@@ -265,7 +270,7 @@ export function ResultsScreen({ route, navigation }: Props) {
   };
 
   const handleGoHome = () => {
-    navigation.replace('Main', { screen: 'Practice' });
+    navigation.replace('Main', { screen: 'Progress' });
   };
 
   return (
@@ -295,9 +300,32 @@ export function ResultsScreen({ route, navigation }: Props) {
           {exerciseName}
         </Animated.Text>
 
+        {/* Vocal Range Display (when available) */}
+        {hasRangeData && (
+          <Animated.View
+            entering={FadeInUp.delay(500).duration(600)}
+            style={styles.rangeContainer}
+          >
+            <Text style={styles.rangeIcon}>🎤</Text>
+            <Text style={styles.rangeTitle}>Your Vocal Range</Text>
+            <View style={styles.rangeNotesRow}>
+              <View style={styles.rangeNote}>
+                <Text style={styles.rangeNoteValue}>{lowestNote}</Text>
+                <Text style={styles.rangeNoteLabel}>Low</Text>
+              </View>
+              <Text style={styles.rangeArrow}>→</Text>
+              <View style={styles.rangeNote}>
+                <Text style={styles.rangeNoteValue}>{highestNote}</Text>
+                <Text style={styles.rangeNoteLabel}>High</Text>
+              </View>
+            </View>
+            <Text style={styles.rangeHint}>This range has been saved and will personalize your exercises!</Text>
+          </Animated.View>
+        )}
+
         {/* Stats Grid */}
         <Animated.View
-          entering={FadeInUp.delay(600).duration(600)}
+          entering={FadeInUp.delay(hasRangeData ? 700 : 600).duration(600)}
           style={styles.statsGrid}
         >
           <View style={styles.statCard}>
@@ -670,5 +698,57 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     lineHeight: 20,
     paddingLeft: 8,
+  },
+  // Vocal Range Display styles
+  rangeContainer: {
+    width: '100%',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#10B981',
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  rangeIcon: {
+    fontSize: 36,
+    marginBottom: 8,
+  },
+  rangeTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#10B981',
+    marginBottom: 16,
+  },
+  rangeNotesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 24,
+    marginBottom: 12,
+  },
+  rangeNote: {
+    alignItems: 'center',
+  },
+  rangeNoteValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  rangeNoteLabel: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    textTransform: 'uppercase',
+  },
+  rangeArrow: {
+    fontSize: 24,
+    color: 'rgba(255, 255, 255, 0.5)',
+  },
+  rangeHint: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    marginTop: 8,
   },
 });

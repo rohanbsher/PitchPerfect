@@ -35,13 +35,15 @@ function VoiceAssistantUI() {
     isActive,
     transcript,
     response,
+    conversationHistory,
+    isConversationMode,
     toggle,
-    deactivate,
+    endConversation,
     setNavigationCallback,
     setGoBackCallback,
   } = useVoiceAssistantContext();
 
-  console.log('[VoiceAssistantUI] Rendering with state:', state);
+  console.log('[VoiceAssistantUI] Rendering with state:', state, 'isConversationMode:', isConversationMode);
 
   return (
     <>
@@ -57,7 +59,9 @@ function VoiceAssistantUI() {
         state={state}
         transcript={transcript}
         response={response}
-        onClose={deactivate}
+        conversationHistory={conversationHistory}
+        isConversationMode={isConversationMode}
+        onClose={endConversation}
       />
     </>
   );

@@ -37,6 +37,8 @@ export type RootStackParamList = {
     notesAttempted: number;
     duration: number;
     exerciseName: string;
+    lowestNote?: string;
+    highestNote?: string;
   };
 };
 
