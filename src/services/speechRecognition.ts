@@ -14,19 +14,53 @@ type SpeechErrorEvent = { error?: { message?: string } };
 type SpeechStartEvent = {};
 type SpeechEndEvent = {};
 
-// Lazy-loaded Voice module
+// Lazy-loaded Voice module with thread-safe initialization
 let _Voice: any = null;
+let _isInitializing = false;
+let _initPromise: Promise<any> | null = null;
 
+/**
+ * Get the Voice module synchronously (returns null if not yet initialized)
+ */
 function getVoice(): any {
-  if (!_Voice) {
-    try {
-      _Voice = require('@react-native-voice/voice').default;
-    } catch (error) {
-      console.warn('[SpeechRecognition] Failed to load Voice module:', error);
-      return null;
-    }
-  }
   return _Voice;
+}
+
+/**
+ * Initialize the Voice module with thread-safe locking.
+ * Prevents race conditions on New Architecture where multiple calls
+ * could trigger simultaneous native module loading.
+ */
+async function initializeVoiceModule(): Promise<any> {
+  // Fast path - already initialized
+  if (_Voice) {
+    return _Voice;
+  }
+
+  // Another call is already initializing - wait for it
+  if (_isInitializing && _initPromise) {
+    return _initPromise;
+  }
+
+  // Start initialization with lock
+  _isInitializing = true;
+  _initPromise = new Promise((resolve) => {
+    // Use setTimeout to avoid blocking JS thread during require()
+    setTimeout(() => {
+      try {
+        _Voice = require('@react-native-voice/voice').default;
+        console.log('[SpeechRecognition] Voice module loaded successfully');
+        resolve(_Voice);
+      } catch (error) {
+        console.warn('[SpeechRecognition] Failed to load Voice module:', error);
+        resolve(null);
+      } finally {
+        _isInitializing = false;
+      }
+    }, 0);
+  });
+
+  return _initPromise;
 }
 
 export type SpeechRecognitionState =
@@ -57,11 +91,12 @@ class SpeechRecognitionService {
     console.log('[SpeechRecognition] Service created (listeners deferred)');
   }
 
-  private initializeListeners(): void {
+  private async initializeListeners(): Promise<void> {
     if (this.isInitialized) return;
 
     try {
-      const Voice = getVoice();
+      // Thread-safe initialization - wait for module to load
+      const Voice = await initializeVoiceModule();
       if (!Voice) {
         console.warn('[SpeechRecognition] Voice module not available');
         return;
@@ -166,10 +201,10 @@ class SpeechRecognitionService {
   /**
    * Set callbacks for speech events
    */
-  setCallbacks(callbacks: SpeechRecognitionCallbacks): void {
+  async setCallbacks(callbacks: SpeechRecognitionCallbacks): Promise<void> {
     this.callbacks = callbacks;
     // Initialize listeners when callbacks are set (lazy initialization)
-    this.initializeListeners();
+    await this.initializeListeners();
   }
 
   /**
@@ -177,7 +212,8 @@ class SpeechRecognitionService {
    */
   async startListening(): Promise<boolean> {
     try {
-      const Voice = getVoice();
+      // Thread-safe initialization - ensures module is loaded before use
+      const Voice = await initializeVoiceModule();
       if (!Voice) {
         console.warn('[SpeechRecognition] Voice module not available');
         this.callbacks.onError?.('Voice recognition not available');
@@ -186,7 +222,7 @@ class SpeechRecognitionService {
 
       // Ensure listeners are initialized with error handling
       try {
-        this.initializeListeners();
+        await this.initializeListeners();
       } catch (initError) {
         console.warn('[SpeechRecognition] Failed to init listeners:', initError);
         // Continue anyway - listeners may work

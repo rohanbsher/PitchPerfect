@@ -11,7 +11,7 @@
  */
 
 import React, { useRef, useCallback, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Modal, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Modal, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { Canvas, Path, Skia } from '@shopify/react-native-skia';
 import Animated, {
   useAnimatedStyle,
@@ -115,6 +115,9 @@ export const NativePitchScreen: React.FC = () => {
   // Settings state for volume
   const [pianoVolume, setPianoVolume] = useState(85); // Default 85%
 
+  // Loading state for exercise initialization
+  const [isInitializing, setIsInitializing] = useState(false);
+
   // Shared values for animations
   const targetPitchY = useSharedValue(-100); // Off screen by default
 
@@ -152,6 +155,10 @@ export const NativePitchScreen: React.FC = () => {
       exerciseEngineRef.current = new ExerciseEngine({
         onStateChange: (state) => {
           setExerciseState(state);
+          // Clear loading state when exercise actually starts
+          if (state !== 'idle') {
+            setIsInitializing(false);
+          }
           // Switch to workout view when exercise starts, back to home when idle/complete
           if (state !== 'idle' && state !== 'complete') {
             setViewMode('workout');
@@ -174,8 +181,8 @@ export const NativePitchScreen: React.FC = () => {
       },
       onFeedback: (message) => {
         setFeedback(message);
-        // Clear feedback after 2 seconds
-        setTimeout(() => setFeedback(''), 2000);
+        // Clear feedback after 3 seconds (extended for better readability)
+        setTimeout(() => setFeedback(''), 3000);
       },
       onWorkoutComplete: () => {
         setFeedback('');
@@ -899,6 +906,14 @@ export const NativePitchScreen: React.FC = () => {
           </View>
         </Pressable>
       </Modal>
+
+      {/* Loading overlay for exercise initialization */}
+      {isInitializing && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#10B981" />
+          <Text style={styles.loadingText}>Preparing exercise...</Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -1370,6 +1385,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'rgba(255, 255, 255, 0.8)',
     textTransform: 'capitalize',
+  },
+  // Loading overlay styles
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    zIndex: 100,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
   },
 });
 

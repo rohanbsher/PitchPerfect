@@ -98,6 +98,10 @@ const pianoSamples: Record<string, any> = {
   'C6': require('../../assets/audio/piano/C6.aiff'),
 };
 
+// Memory bounds to prevent unbounded array growth
+const MAX_PITCH_SAMPLES = 500;       // ~8 seconds at 60Hz - rolling window for accuracy calculation
+const MAX_ALL_FREQUENCIES = 10000;   // Max frequencies to track per session for range analysis
+
 // Get closest available piano sample
 const getClosestSample = (note: string): any => {
   // Direct match
@@ -618,11 +622,20 @@ export class ExerciseEngine {
    * Record a pitch sample from the user
    * Call this from the pitch detector callback
    * Phase 7: Increased confidence threshold from 0.3 to 0.5 to filter background noise
+   * Memory optimization: Rolling window for pitchSamples, capped allFrequenciesSung
    */
   recordPitch(frequency: number, confidence: number): void {
     if (this.state === 'listening' && confidence > 0.5) {
+      // Rolling window for pitchSamples to prevent memory bloat (~8 sec at 60Hz)
+      if (this.pitchSamples.length >= MAX_PITCH_SAMPLES) {
+        this.pitchSamples.shift();
+      }
       this.pitchSamples.push(frequency);
-      this.allFrequenciesSung.push(frequency);
+
+      // Cap allFrequenciesSung for range analysis (prevents unbounded growth in long sessions)
+      if (this.allFrequenciesSung.length < MAX_ALL_FREQUENCIES) {
+        this.allFrequenciesSung.push(frequency);
+      }
     }
   }
 
@@ -719,6 +732,7 @@ export class ExerciseEngine {
 
   /**
    * Check if AI coaching should be triggered
+   * Robust error handling with timeout to prevent hangs and unhandled rejections
    */
   private async checkForAICoaching(currentAccuracy: number, targetNote: string): Promise<void> {
     // Only trigger if:
@@ -728,21 +742,45 @@ export class ExerciseEngine {
     if (this.consecutiveLowScores >= 3 && now - this.lastAICoachingTime > 20000) {
       this.lastAICoachingTime = now;
 
-      // Request AI coaching tip (non-blocking)
-      generateRealTimeCoachingTip(
+      // Request AI coaching tip with timeout (non-blocking, fire-and-forget with error handling)
+      this.requestAICoachingTip(currentAccuracy, targetNote).catch(() => {
+        // Silently ignore - coaching is optional and shouldn't affect exercise flow
+      });
+    }
+  }
+
+  /**
+   * Request AI coaching tip with timeout and robust error handling
+   */
+  private async requestAICoachingTip(currentAccuracy: number, targetNote: string): Promise<void> {
+    const AI_COACHING_TIMEOUT_MS = 8000;
+
+    try {
+      // Race between the API call and a timeout
+      const tipPromise = generateRealTimeCoachingTip(
         this.consecutiveLowScores,
         currentAccuracy,
         targetNote,
         this.userVocalRange
-      ).then(async tip => {
-        if (tip && this.isRunning) {
+      );
+      const timeoutPromise = new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error('AI coaching timeout')), AI_COACHING_TIMEOUT_MS)
+      );
+
+      const tip = await Promise.race([tipPromise, timeoutPromise]);
+
+      if (tip && this.isRunning) {
+        try {
           this.callbacks.onAICoaching?.(tip);
-          // Speak the AI coaching tip
           await VoiceCoach.speakCoachingTip(tip, this.voicePreferences);
+        } catch (voiceError) {
+          console.warn('[ExerciseEngine] Voice coaching playback failed:', voiceError);
+          // Don't rethrow - tip was delivered to UI, voice is optional
         }
-      }).catch(error => {
-        console.error('Failed to get AI coaching:', error);
-      });
+      }
+    } catch (error) {
+      console.warn('[ExerciseEngine] AI coaching request failed:', error);
+      // Silently fail - coaching is a nice-to-have, not critical
     }
   }
 

@@ -430,6 +430,11 @@ class VoiceAssistantService {
 
     if (success) {
       this.setState('listening');
+      // Clear any existing final timeout before setting new one (memory leak prevention)
+      if (this.finalCloseTimeoutId) {
+        clearTimeout(this.finalCloseTimeoutId);
+        this.finalCloseTimeoutId = null;
+      }
       // Set a final timeout to close if no response
       this.finalCloseTimeoutId = setTimeout(() => {
         this.endConversation();
