@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ExerciseResult, NoteResult } from '../../data/models';
+import { NoteResult } from '../../data/models';
 
 // Initialize Anthropic client
 // NOTE: You'll need to set EXPO_PUBLIC_ANTHROPIC_API_KEY in your .env file
@@ -17,19 +17,52 @@ export interface VocalCoachFeedback {
 }
 
 /**
+ * Helper: Calculate average pitch error (in cents) from pitch readings
+ */
+function calculateAveragePitchError(noteResult: NoteResult): number {
+  if (!noteResult.pitchReadings || noteResult.pitchReadings.length === 0) {
+    return 0;
+  }
+  const totalCents = noteResult.pitchReadings.reduce((sum, r) => sum + r.centsOff, 0);
+  return totalCents / noteResult.pitchReadings.length;
+}
+
+/**
+ * Helper: Validate that feedback has all required fields
+ */
+function validateFeedback(feedback: unknown): feedback is VocalCoachFeedback {
+  if (!feedback || typeof feedback !== 'object') return false;
+  const f = feedback as Record<string, unknown>;
+  return (
+    typeof f.summary === 'string' &&
+    Array.isArray(f.strengths) &&
+    Array.isArray(f.areasToImprove) &&
+    Array.isArray(f.specificTips) &&
+    typeof f.encouragement === 'string' &&
+    typeof f.nextSteps === 'string'
+  );
+}
+
+/**
  * Analyzes exercise results and generates personalized AI coaching feedback
  */
 export async function generateVocalCoachFeedback(
   exerciseName: string,
   noteResults: NoteResult[],
   overallAccuracy: number,
-  exerciseDuration: number
+  exerciseDurationMs: number
 ): Promise<VocalCoachFeedback> {
+  // Input validation - return fallback if invalid data
+  if (!exerciseName || !noteResults || noteResults.length === 0) {
+    console.warn('⚠️ Invalid input to generateVocalCoachFeedback, using fallback');
+    return generateFallbackFeedback(exerciseName || 'Exercise', overallAccuracy, noteResults || []);
+  }
+
   try {
     // Prepare analysis data
     const totalNotes = noteResults.length;
-    const successfulNotes = noteResults.filter((nr) => nr.success).length;
-    const failedNotes = noteResults.filter((nr) => !nr.success);
+    const successfulNotes = noteResults.filter((nr) => nr.passed).length;
+    const failedNotes = noteResults.filter((nr) => !nr.passed);
 
     // Calculate pitch tendency (sharp vs flat)
     let sharpCount = 0;
@@ -37,23 +70,22 @@ export async function generateVocalCoachFeedback(
     let unstableCount = 0;
 
     noteResults.forEach((nr) => {
-      if (nr.averagePitchError) {
-        if (Math.abs(nr.averagePitchError) > 30) {
-          unstableCount++;
-        }
-        if (nr.averagePitchError > 10) {
-          sharpCount++;
-        } else if (nr.averagePitchError < -10) {
-          flatCount++;
-        }
+      const avgError = calculateAveragePitchError(nr);
+      if (Math.abs(avgError) > 30) {
+        unstableCount++;
+      }
+      if (avgError > 10) {
+        sharpCount++;
+      } else if (avgError < -10) {
+        flatCount++;
       }
     });
 
     // Identify problem notes
     const problemNotes = failedNotes
       .map((nr) => ({
-        note: nr.targetNote,
-        avgError: nr.averagePitchError || 0,
+        note: nr.noteExpected,
+        avgError: calculateAveragePitchError(nr),
       }))
       .slice(0, 3); // Top 3 problem notes
 
@@ -64,7 +96,7 @@ export async function generateVocalCoachFeedback(
 - Total notes attempted: ${totalNotes}
 - Successfully sung: ${successfulNotes} (${overallAccuracy.toFixed(1)}% accuracy)
 - Missed notes: ${totalNotes - successfulNotes}
-- Exercise duration: ${Math.round(exerciseDuration / 1000)} seconds
+- Exercise duration: ${Math.round(exerciseDurationMs / 1000)} seconds
 
 **Pitch Tendency Analysis:**
 - Notes sung sharp (too high): ${sharpCount}
@@ -98,7 +130,7 @@ Provide personalized, encouraging coaching feedback in the following JSON format
     const message = await client.messages.create({
       model: 'claude-3-5-haiku-20241022', // Fast and cost-effective
       max_tokens: 1024,
-      temperature: 0.7,
+      temperature: 0.3, // Lower temperature for consistent JSON output
       messages: [
         {
           role: 'user',
@@ -118,9 +150,21 @@ Provide personalized, encouraging coaching feedback in the following JSON format
       jsonText = responseText.split('```')[1].split('```')[0].trim();
     }
 
-    const feedback: VocalCoachFeedback = JSON.parse(jsonText);
+    // Robust JSON parsing with validation
+    try {
+      const parsed = JSON.parse(jsonText);
 
-    return feedback;
+      // Validate that all required fields exist
+      if (!validateFeedback(parsed)) {
+        console.warn('⚠️ AI response missing required fields, using fallback');
+        return generateFallbackFeedback(exerciseName, overallAccuracy, noteResults);
+      }
+
+      return parsed;
+    } catch (parseError) {
+      console.warn('⚠️ Failed to parse AI response JSON, using fallback:', parseError);
+      return generateFallbackFeedback(exerciseName, overallAccuracy, noteResults);
+    }
   } catch (error) {
     console.error('Error generating vocal coach feedback:', error);
 

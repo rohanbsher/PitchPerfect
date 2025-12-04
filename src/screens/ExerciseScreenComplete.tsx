@@ -270,7 +270,7 @@ export const ExerciseScreenComplete: React.FC = () => {
         selectedExercise.name,
         exerciseResults.noteResults,
         exerciseResults.overallAccuracy,
-        Date.now() - (exerciseResults.completedAt?.getTime() || Date.now())
+        exerciseResults.duration * 1000 // Convert seconds to milliseconds
       );
 
       setAiCoachFeedback(feedback);
