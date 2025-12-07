@@ -73,7 +73,8 @@ export interface BreathingExercise {
 }
 
 // Helper to create exercise notes
-const createNote = (note: string, duration: number = 2): ExerciseNote => ({
+// Default duration: 3 seconds for clear pitch evaluation (beginner-friendly)
+const createNote = (note: string, duration: number = 3): ExerciseNote => ({
   note,
   frequency: NOTE_FREQUENCIES[note] || 261.63,
   duration,

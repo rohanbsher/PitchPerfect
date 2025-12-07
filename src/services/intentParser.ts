@@ -79,19 +79,19 @@ const INTENT_PATTERNS: IntentPattern[] = [
   // Start specific exercises
   {
     pattern: /^(start|do|practice)\s*(the\s+)?(warmup|warm\s*up)\s*scale/i,
-    intentBuilder: () => ({ type: 'start_exercise', exerciseId: 'warmup-scale' }),
+    intentBuilder: () => ({ type: 'start_exercise', exerciseId: 'warmup_scale' }),
   },
   {
     pattern: /^(start|do|practice)\s*(the\s+)?descending\s*scale/i,
-    intentBuilder: () => ({ type: 'start_exercise', exerciseId: 'descending-scale' }),
+    intentBuilder: () => ({ type: 'start_exercise', exerciseId: 'descending_scale' }),
   },
   {
     pattern: /^(start|do|practice)\s*(the\s+)?(major\s+)?arpeggio/i,
-    intentBuilder: () => ({ type: 'start_exercise', exerciseId: 'major-arpeggio' }),
+    intentBuilder: () => ({ type: 'start_exercise', exerciseId: 'major_arpeggio' }),
   },
   {
     pattern: /^(start|do|practice)\s*(the\s+)?octave\s*jump/i,
-    intentBuilder: () => ({ type: 'start_exercise', exerciseId: 'octave-jump' }),
+    intentBuilder: () => ({ type: 'start_exercise', exerciseId: 'octave_jump' }),
   },
   {
     pattern: /^(start|do|practice)\s*(the\s+)?siren/i,

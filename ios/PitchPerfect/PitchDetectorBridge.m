@@ -10,6 +10,8 @@
 
 RCT_EXTERN_METHOD(startPitchDetection:(RCTResponseSenderBlock)callback)
 RCT_EXTERN_METHOD(stopPitchDetection)
+RCT_EXTERN_METHOD(stopPitchDetectionAndReleaseSession:(RCTResponseSenderBlock)callback)
+RCT_EXTERN_METHOD(reconfigureAndStartPitchDetection:(RCTResponseSenderBlock)callback)
 RCT_EXTERN_METHOD(requestPermissions:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 

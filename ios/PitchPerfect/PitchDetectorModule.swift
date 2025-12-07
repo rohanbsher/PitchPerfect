@@ -57,13 +57,15 @@ class PitchDetectorModule: RCTEventEmitter {
   private func setupAudioSession() -> Bool {
     do {
       let audioSession = AVAudioSession.sharedInstance()
-      try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.allowBluetooth, .defaultToSpeaker])
+      // Use .default mode instead of .measurement to allow audio playback (piano notes, TTS)
+      // .measurement mode is too restrictive and blocks expo-av audio playback
+      try audioSession.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker, .mixWithOthers])
       try audioSession.setPreferredSampleRate(44100.0)
       try audioSession.setPreferredIOBufferDuration(0.01) // 10ms buffer for low latency
-      try audioSession.setActive(true)
+      try audioSession.setActive(true, options: [.notifyOthersOnDeactivation])
 
       sampleRate = audioSession.sampleRate
-      print("🎤 Audio session configured: \(sampleRate) Hz")
+      print("🎤 Audio session configured: \(sampleRate) Hz (mode: default, mixWithOthers)")
       return true
     } catch {
       print("❌ Audio session setup failed: \(error)")
@@ -131,6 +133,91 @@ class PitchDetectorModule: RCTEventEmitter {
     audioEngine?.stop()
     isRunning = false
     print("🛑 Pitch detection stopped")
+  }
+
+  /**
+   * Stop pitch detection AND release the audio session.
+   * This is critical for allowing other audio services (like voice recognition) to use the microphone.
+   * The callback returns success/failure for proper async handling.
+   */
+  @objc func stopPitchDetectionAndReleaseSession(_ callback: @escaping RCTResponseSenderBlock) {
+    // Stop the audio engine if running
+    if isRunning {
+      inputNode?.removeTap(onBus: 0)
+      audioEngine?.stop()
+      audioEngine = nil
+      inputNode = nil
+      isRunning = false
+    }
+
+    // Critical: Deactivate the audio session to release microphone for other services
+    do {
+      let audioSession = AVAudioSession.sharedInstance()
+      try audioSession.setActive(false, options: [.notifyOthersOnDeactivation])
+      print("🔇 Audio session deactivated for voice assistant")
+      callback([NSNull(), "Audio session released"])
+    } catch {
+      print("❌ Failed to deactivate audio session: \(error)")
+      // Still report success for the stop - audio session issues shouldn't block
+      callback([NSNull(), "Stopped but audio session release failed: \(error.localizedDescription)"])
+    }
+  }
+
+  /**
+   * Reconfigure and start pitch detection with a fresh audio session.
+   * Called after voice assistant releases the microphone.
+   */
+  @objc func reconfigureAndStartPitchDetection(_ callback: @escaping RCTResponseSenderBlock) {
+    print("📍 reconfigureAndStartPitchDetection called, isRunning: \(isRunning)")
+
+    guard !isRunning else {
+      print("📍 Already running, returning success")
+      callback([NSNull(), "Already running"])
+      return
+    }
+
+    // Full setup: configure audio session fresh
+    print("📍 Setting up fresh audio session...")
+    guard setupAudioSession() else {
+      callback(["Failed to setup audio session"])
+      return
+    }
+
+    // Create new audio engine
+    audioEngine = AVAudioEngine()
+    guard let engine = audioEngine else {
+      callback(["Failed to create audio engine"])
+      return
+    }
+
+    inputNode = engine.inputNode
+    guard let input = inputNode else {
+      callback(["Failed to get input node"])
+      return
+    }
+
+    let format = input.outputFormat(forBus: 0)
+    sampleRate = format.sampleRate
+    print("📍 Input format: \(format), sample rate: \(sampleRate)")
+
+    // Install tap on input node
+    print("📍 Installing audio tap on bus 0, buffer size: \(bufferSize)")
+    input.installTap(onBus: 0, bufferSize: bufferSize, format: format) { [weak self] buffer, time in
+      self?.processAudioBuffer(buffer)
+    }
+
+    do {
+      print("📍 Preparing audio engine...")
+      engine.prepare()
+      print("📍 Starting audio engine...")
+      try engine.start()
+      isRunning = true
+      print("✅ Pitch detection reconfigured and started at \(sampleRate) Hz")
+      callback([NSNull(), "Reconfigured and started at \(sampleRate) Hz"])
+    } catch {
+      print("❌ Engine start failed: \(error)")
+      callback(["Failed to start engine: \(error.localizedDescription)"])
+    }
   }
 
   private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {

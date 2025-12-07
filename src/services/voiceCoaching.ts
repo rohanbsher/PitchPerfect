@@ -2,11 +2,12 @@
  * Voice Coaching Service
  *
  * Provides natural, varied voice coaching using Text-to-Speech.
- * Uses Premium iOS voices for natural, conversational output.
+ * Primary: ElevenLabs AI voices (natural, human-like)
+ * Fallback: iOS native voices (expo-speech)
  */
 
 import * as Speech from 'expo-speech';
-import { Audio } from 'expo-av';
+import { ElevenLabsTTS, VoiceId } from './elevenLabsTTS';
 
 // Voice preferences
 export interface VoicePreferences {
@@ -216,24 +217,9 @@ async function initializeVoice(): Promise<void> {
 }
 
 /**
- * Configure audio session for TTS playback
- * This ensures TTS plays at full volume and doesn't conflict with other audio
- */
-async function configureAudioSession(): Promise<void> {
-  try {
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: false, // Not recording during TTS
-      playsInSilentModeIOS: true, // Play even if muted
-      staysActiveInBackground: false,
-      shouldDuckAndroid: true,
-    });
-  } catch (error) {
-    console.warn('[Voice] Audio session config failed:', error);
-  }
-}
-
-/**
- * Speak text using TTS with premium voice
+ * Speak text using TTS
+ * Primary: ElevenLabs (natural AI voice)
+ * Fallback: iOS native voice (expo-speech)
  */
 export async function speak(text: string, preferences: VoicePreferences = DEFAULT_PREFERENCES): Promise<void> {
   if (!preferences.enabled) {
@@ -242,11 +228,29 @@ export async function speak(text: string, preferences: VoicePreferences = DEFAUL
   }
 
   try {
+    // Try ElevenLabs first for natural voice
+    if (ElevenLabsTTS.isAvailable()) {
+      console.log('[Voice] Using ElevenLabs for:', text.substring(0, 50) + '...');
+
+      const success = await ElevenLabsTTS.speak(text, {
+        voice: 'rachel', // Warm, encouraging female voice
+        onFallback: () => {
+          console.log('[Voice] ElevenLabs failed, using fallback');
+        },
+      });
+
+      if (success) {
+        return; // ElevenLabs worked!
+      }
+    }
+
+    // Fallback to iOS native voice
+    console.log('[Voice] Using native iOS voice for:', text.substring(0, 50) + '...');
+
     // Initialize voice selection if not done
     await initializeVoice();
 
-    // Configure audio session for clear playback
-    await configureAudioSession();
+    // Note: Audio session is managed by ExerciseEngine to avoid conflicts
 
     // Check if speech is already in progress
     const isSpeaking = await Speech.isSpeakingAsync();
@@ -258,8 +262,6 @@ export async function speak(text: string, preferences: VoicePreferences = DEFAUL
 
     // Use selected premium voice or user preference
     const voiceToUse = preferences.voice || selectedVoice || undefined;
-
-    console.log('[Voice] Speaking:', text.substring(0, 50) + '...', 'voice:', voiceToUse);
 
     await Speech.speak(text, {
       language: 'en-US',
@@ -279,10 +281,13 @@ export async function speak(text: string, preferences: VoicePreferences = DEFAUL
 }
 
 /**
- * Stop any ongoing speech
+ * Stop any ongoing speech (both ElevenLabs and native)
  */
 export async function stopSpeaking(): Promise<void> {
   try {
+    // Stop ElevenLabs audio
+    await ElevenLabsTTS.stopAudio();
+    // Stop native speech
     await Speech.stop();
   } catch (error) {
     console.warn('[Voice] Failed to stop:', error);

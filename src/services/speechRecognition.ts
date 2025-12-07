@@ -168,9 +168,58 @@ class SpeechRecognitionService {
       return;
     }
 
+    // Check for audio session errors - attempt recovery
+    if (errorMessage.toLowerCase().includes('audio') ||
+        errorMessage.toLowerCase().includes('session') ||
+        errorMessage.includes('AVAudioSession') ||
+        errorMessage.includes('interrupted')) {
+      console.log('[SpeechRecognition] Audio session error detected, attempting recovery');
+      this.handleAudioSessionError();
+      return;
+    }
+
     this.callbacks.onError?.(errorMessage);
     this.setState('error');
   };
+
+  /**
+   * Handle audio session error by destroying and reinitializing the voice module
+   */
+  private async handleAudioSessionError(): Promise<void> {
+    console.log('[SpeechRecognition] Attempting recovery from audio session error');
+
+    try {
+      // Destroy and clear the voice module
+      const Voice = getVoice();
+      if (Voice) {
+        try {
+          await Voice.destroy();
+        } catch (e) {
+          // Ignore destroy errors
+        }
+      }
+
+      // Clear the cached module to force reinitialization
+      _Voice = null;
+      this.isInitialized = false;
+
+      // Wait for audio system to settle
+      await new Promise(r => setTimeout(r, 500));
+
+      // Reinitialize the voice module
+      await initializeVoiceModule();
+      await this.initializeListeners();
+
+      console.log('[SpeechRecognition] Recovery complete, module reinitialized');
+
+      // Set state to idle - caller can retry if needed
+      this.setState('idle');
+    } catch (error) {
+      console.error('[SpeechRecognition] Recovery failed:', error);
+      this.callbacks.onError?.('Voice recognition recovery failed');
+      this.setState('error');
+    }
+  }
 
   private setState(newState: SpeechRecognitionState): void {
     if (this.state !== newState) {

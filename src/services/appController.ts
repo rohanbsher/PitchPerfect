@@ -5,6 +5,7 @@
  * Provides actions for workout control, navigation, settings, and queries.
  */
 
+import { NativeModules } from 'react-native';
 import { ExerciseEngine, ExerciseState } from '../engines/ExerciseEngine';
 import { getUserProgress, saveUserSettings, getUserSettings } from './storage';
 import { UserProgress, UserSettings } from '../types/userProgress';
@@ -46,6 +47,7 @@ export interface ProgressSummary {
 // Navigation callback type
 type NavigationCallback = (screen: string) => void;
 type GoBackCallback = () => void;
+type PitchDetectorCallback = () => void;
 
 class AppControllerService {
   private exerciseEngine: ExerciseEngine | null = null;
@@ -54,6 +56,11 @@ class AppControllerService {
   private goBackCallback: GoBackCallback | null = null;
   private currentExerciseName: string = '';
   private currentNoteName: string = '';
+
+  // Pitch detector coordination for voice assistant
+  private pausePitchDetectorCallback: PitchDetectorCallback | null = null;
+  private resumePitchDetectorCallback: PitchDetectorCallback | null = null;
+  private isPitchDetectorPaused: boolean = false;
 
   /**
    * Set the ExerciseEngine instance (called from NativePitchScreen)
@@ -95,6 +102,122 @@ class AppControllerService {
    */
   setCurrentNoteName(note: string): void {
     this.currentNoteName = note;
+  }
+
+  // ===== PITCH DETECTOR COORDINATION =====
+
+  /**
+   * Set callbacks for pitch detector control (called from NativePitchScreen)
+   * Used by voice assistant to pause/resume pitch detection to avoid audio session conflicts
+   */
+  setPitchDetectorCallbacks(
+    pause: PitchDetectorCallback | null,
+    resume: PitchDetectorCallback | null
+  ): void {
+    this.pausePitchDetectorCallback = pause;
+    this.resumePitchDetectorCallback = resume;
+  }
+
+  /**
+   * Pause pitch detector before starting voice recognition
+   * Called by voice assistant to avoid audio session conflicts
+   */
+  pausePitchDetector(): void {
+    if (this.pausePitchDetectorCallback && !this.isPitchDetectorPaused) {
+      console.log('[AppController] Pausing pitch detector for voice assistant');
+      this.pausePitchDetectorCallback();
+      this.isPitchDetectorPaused = true;
+    }
+  }
+
+  /**
+   * Resume pitch detector after voice recognition ends
+   * Called by voice assistant when deactivating
+   */
+  resumePitchDetector(): void {
+    if (this.resumePitchDetectorCallback && this.isPitchDetectorPaused) {
+      console.log('[AppController] Resuming pitch detector after voice assistant');
+      this.resumePitchDetectorCallback();
+      this.isPitchDetectorPaused = false;
+    }
+  }
+
+  /**
+   * Check if pitch detector is currently paused
+   */
+  isPitchDetectorCurrentlyPaused(): boolean {
+    return this.isPitchDetectorPaused;
+  }
+
+  /**
+   * Fully pause pitch detector AND release audio session.
+   * This is the critical method for voice assistant to avoid audio session conflicts.
+   * Returns a promise that resolves when the audio session is released.
+   */
+  async pausePitchDetectorFully(): Promise<boolean> {
+    console.log('[AppController] pausePitchDetectorFully called');
+
+    return new Promise((resolve) => {
+      try {
+        const { PitchDetectorModule } = NativeModules;
+        if (!PitchDetectorModule) {
+          console.warn('[AppController] PitchDetectorModule not available');
+          resolve(false);
+          return;
+        }
+
+        PitchDetectorModule.stopPitchDetectionAndReleaseSession((error: string | null, result: string) => {
+          if (error) {
+            console.error('[AppController] Failed to release audio session:', error);
+            resolve(false);
+          } else {
+            console.log('[AppController] Audio session released:', result);
+            this.isPitchDetectorPaused = true;
+            resolve(true);
+          }
+        });
+      } catch (error) {
+        console.error('[AppController] Error calling native module:', error);
+        resolve(false);
+      }
+    });
+  }
+
+  /**
+   * Fully resume pitch detector with fresh audio session configuration.
+   * Called after voice assistant releases the microphone.
+   * Includes a 500ms delay to let iOS audio system settle.
+   */
+  async resumePitchDetectorFully(): Promise<boolean> {
+    console.log('[AppController] resumePitchDetectorFully called');
+
+    // Wait for iOS audio system to settle
+    await new Promise(r => setTimeout(r, 500));
+
+    return new Promise((resolve) => {
+      try {
+        const { PitchDetectorModule } = NativeModules;
+        if (!PitchDetectorModule) {
+          console.warn('[AppController] PitchDetectorModule not available');
+          resolve(false);
+          return;
+        }
+
+        PitchDetectorModule.reconfigureAndStartPitchDetection((error: string | null, result: string) => {
+          if (error) {
+            console.error('[AppController] Failed to reconfigure pitch detector:', error);
+            resolve(false);
+          } else {
+            console.log('[AppController] Pitch detector reconfigured:', result);
+            this.isPitchDetectorPaused = false;
+            resolve(true);
+          }
+        });
+      } catch (error) {
+        console.error('[AppController] Error calling native module:', error);
+        resolve(false);
+      }
+    });
   }
 
   // ===== WORKOUT ACTIONS =====

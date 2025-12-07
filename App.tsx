@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import { VoiceAssistantProvider, useVoiceAssistantContext } from './src/hooks/us
 import { VoiceAssistantButton } from './src/components/VoiceAssistantButton';
 import { VoiceAssistantOverlay } from './src/components/VoiceAssistantOverlay';
 import { appController } from './src/services/appController';
+import { loadFeatureFlags, isVoiceAssistantEnabled } from './src/config/featureFlags';
 
 // Dark theme for navigation
 const DarkTheme = {
@@ -120,6 +121,14 @@ function NavigationWrapper({ children }: { children: React.ReactNode }) {
 
 function AppContent() {
   const { hasCompletedOnboarding, isLoading, completeOnboarding } = useOnboardingStatus();
+  const [voiceAssistantEnabled, setVoiceAssistantEnabled] = useState(false);
+
+  // Load feature flags on mount
+  useEffect(() => {
+    loadFeatureFlags().then(() => {
+      setVoiceAssistantEnabled(isVoiceAssistantEnabled());
+    });
+  }, []);
 
   if (isLoading) {
     return (
@@ -138,7 +147,7 @@ function AppContent() {
       <NavigationWrapper>
         <StatusBar style="light" />
         <AppNavigator />
-        <VoiceAssistantUI />
+        {voiceAssistantEnabled && <VoiceAssistantUI />}
       </NavigationWrapper>
     </VoiceAssistantProvider>
   );

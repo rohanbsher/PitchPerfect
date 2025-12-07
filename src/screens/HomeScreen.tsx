@@ -220,8 +220,16 @@ export function HomeScreen() {
           </View>
         </View>
 
+        {/* AI Recommendation Loading */}
+        {loadingRecommendation && !recommendation && (
+          <View style={styles.recommendationLoading}>
+            <ActivityIndicator size="small" color="#8B5CF6" />
+            <Text style={styles.recommendationLoadingText}>Getting AI recommendation...</Text>
+          </View>
+        )}
+
         {/* AI Exercise Recommendation */}
-        {recommendation && !recommendationError && (
+        {recommendation && !recommendationError && !loadingRecommendation && (
           <Animated.View
             entering={FadeInDown.delay(300).duration(600)}
             style={styles.recommendationBanner}
@@ -238,12 +246,16 @@ export function HomeScreen() {
         )}
 
         {/* AI Recommendation Error */}
-        {recommendationError && (
+        {recommendationError && !loadingRecommendation && (
           <View style={styles.recommendationError}>
             <Text style={styles.recommendationErrorText}>{recommendationError}</Text>
-            <Text style={styles.recommendationErrorHint}>
-              Check your internet connection or try again later
-            </Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={loadRecommendation}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -418,6 +430,21 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     lineHeight: 20,
   },
+  recommendationLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    gap: 12,
+  },
+  recommendationLoadingText: {
+    fontSize: 14,
+    color: '#8B5CF6',
+    fontWeight: '500',
+  },
   recommendationError: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderRadius: 12,
@@ -425,17 +452,25 @@ const styles = StyleSheet.create({
     borderColor: '#EF4444',
     padding: 16,
     marginBottom: 24,
+    alignItems: 'center',
   },
   recommendationErrorText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#EF4444',
-    marginBottom: 4,
+    marginBottom: 12,
+    textAlign: 'center',
   },
-  recommendationErrorHint: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
-    lineHeight: 18,
+  retryButton: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   startButton: {
     backgroundColor: '#10B981',

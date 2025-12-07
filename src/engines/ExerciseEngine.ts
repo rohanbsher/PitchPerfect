@@ -9,7 +9,7 @@
  * - Collects session data for persistence
  */
 
-import { Audio } from 'expo-av';
+import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import {
   Exercise,
   ExerciseNote,
@@ -19,6 +19,28 @@ import {
   getDefaultBreathingExercise,
   NOTE_FREQUENCIES,
 } from '../data/exercises';
+
+/**
+ * Configure audio session for simultaneous recording and playback.
+ * This is critical for the app to work properly - we need microphone input
+ * for pitch detection AND audio output for piano notes/TTS simultaneously.
+ */
+async function configureAudioSession(): Promise<void> {
+  try {
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: true, // Enable recording (for pitch detection)
+      playsInSilentModeIOS: true, // Play even when muted
+      staysActiveInBackground: false,
+      interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+      interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+    });
+    console.log('[ExerciseEngine] Audio session configured for playback + recording');
+  } catch (error) {
+    console.warn('[ExerciseEngine] Failed to configure audio session:', error);
+  }
+}
 import { SessionRecord, NoteAttempt, UserProgress } from '../types/userProgress';
 import { generateRealTimeCoachingTip } from '../../services/claudeAI';
 import { frequencyToNote } from '../utils/audioUtils';
@@ -61,7 +83,8 @@ export interface ExerciseCallbacks {
   onSessionComplete?: (session: SessionRecord) => void;
   onFeedback?: (message: string) => void;
   onBreathingUpdate?: (state: BreathingState | null) => void;
-  onCountdownUpdate?: (count: number | null) => void; // For 3..2..1 countdown
+  onCountdownUpdate?: (count: number | null) => void; // For 3..2..1 countdown before singing
+  onListeningCountdown?: (secondsRemaining: number) => void; // Countdown during singing (3...2...1...)
   onAICoaching?: (tip: string) => void;
   onRangeAnalysis?: (range: ComfortableRange | null) => void;
   onWorkoutAdapted?: (adaptationInfo: AdaptationInfo[]) => void;
@@ -174,6 +197,7 @@ export class ExerciseEngine {
   private pitchSamples: number[] = [];
   private isRunning: boolean = false;
   private noteTimeout: NodeJS.Timeout | null = null;
+  private listeningCountdownInterval: NodeJS.Timeout | null = null;
 
   // Breathing exercise state
   private currentBreathingExercise: BreathingExercise | null = null;
@@ -230,6 +254,11 @@ export class ExerciseEngine {
    * Start a breathing exercise
    */
   async startBreathingExercise(exercise?: BreathingExercise): Promise<void> {
+    // Configure audio session for simultaneous recording and playback
+    await configureAudioSession();
+    // Wait for iOS audio session to fully activate
+    await new Promise(r => setTimeout(r, 250));
+
     this.currentBreathingExercise = exercise || getDefaultBreathingExercise();
     this.currentCycle = 1;
     this.currentPhaseIndex = 0;
@@ -361,6 +390,14 @@ export class ExerciseEngine {
    * @param continueSession - If true, continues current session (for auto-progression)
    */
   async startWorkout(workout?: DailyWorkout, continueSession: boolean = false): Promise<void> {
+    // Configure audio session for simultaneous recording and playback
+    // (only if not continuing from breathing, which already configured it)
+    if (!continueSession) {
+      await configureAudioSession();
+      // Wait for iOS audio session to fully activate
+      await new Promise(r => setTimeout(r, 250));
+    }
+
     const originalWorkout = workout || getDefaultWorkout();
     this.originalWorkout = originalWorkout;
     this.currentExerciseIndex = 0;
@@ -490,14 +527,14 @@ export class ExerciseEngine {
       const note = exercise.notes[i];
       this.callbacks.onDemoNoteChange?.(i);
       await this.playPianoNoteQuick(note.note);
-      await this.delay(300); // Quick succession
+      await this.delay(500); // Increased for audio session stability
     }
 
     // 2. Play vocal demonstration if available
     const voiceClipKey = exerciseVoiceClips[exercise.id];
     console.log('[Demo] Voice clip key for', exercise.id, ':', voiceClipKey);
     if (voiceClipKey) {
-      await this.delay(500);
+      await this.delay(700); // Increased for audio session stability
       console.log('[Demo] Playing voice clip:', voiceClipKey);
       await this.playVoiceClip(voiceClipKey);
     }
@@ -567,8 +604,28 @@ export class ExerciseEngine {
     this.callbacks.onCountdownUpdate?.(null); // Clear countdown
     this.pitchSamples = [];
 
+    // Start visual countdown during singing (3...2...1...)
+    let remaining = note.duration;
+    this.callbacks.onListeningCountdown?.(remaining);
+    this.listeningCountdownInterval = setInterval(() => {
+      remaining--;
+      this.callbacks.onListeningCountdown?.(remaining);
+      if (remaining <= 0) {
+        if (this.listeningCountdownInterval) {
+          clearInterval(this.listeningCountdownInterval);
+          this.listeningCountdownInterval = null;
+        }
+      }
+    }, 1000);
+
     // Listen for the note duration
     this.noteTimeout = setTimeout(async () => {
+      // Clear countdown interval if still running
+      if (this.listeningCountdownInterval) {
+        clearInterval(this.listeningCountdownInterval);
+        this.listeningCountdownInterval = null;
+      }
+      this.callbacks.onListeningCountdown?.(0); // Clear countdown display
       await this.evaluateNote(note);
     }, note.duration * 1000);
   }
@@ -685,44 +742,28 @@ export class ExerciseEngine {
       this.consecutiveLowScores = 0;
     }
 
-    // Provide feedback based on accuracy (Phase 6: Improved feedback messages)
-    const userNote = avgFrequency > 0 ? frequencyToNote(avgFrequency) : null;
+    // Provide SIMPLE feedback (max 4 words) - beginner-friendly
+    // NO voice feedback per-note - save for exercise transitions only
     const isFlat = avgFrequency < targetNote.frequency;
-    const centsOff = avgFrequency > 0
-      ? Math.round(Math.abs(1200 * Math.log2(avgFrequency / targetNote.frequency)))
-      : 0;
 
     if (accuracy >= 90) {
-      // Great job - give positive feedback
-      this.callbacks.onFeedback?.('Perfect!');
-      await VoiceCoach.provideFeedback(accuracy, targetNote.note, this.voicePreferences);
+      this.callbacks.onFeedback?.('Perfect! ✓');
     } else if (accuracy >= 70) {
-      // Good - brief encouragement with direction
-      const direction = isFlat ? 'slightly higher' : 'slightly lower';
-      this.callbacks.onFeedback?.(`Good! Aim ${direction}`);
-      if (Math.random() < 0.3) {
-        await VoiceCoach.provideFeedback(accuracy, targetNote.note, this.voicePreferences);
-      }
+      // Good - show direction hint
+      this.callbacks.onFeedback?.(isFlat ? 'Good! ↑' : 'Good! ↓');
     } else if (accuracy >= 50) {
-      // Needs work - provide specific guidance
-      const direction = isFlat ? 'higher ↑' : 'lower ↓';
-      const feedbackMsg = userNote
-        ? `You sang ${userNote} - aim ${direction} for ${targetNote.note}`
-        : `Aim ${direction} for ${targetNote.note}`;
-      this.callbacks.onFeedback?.(feedbackMsg);
-      await VoiceCoach.provideFeedback(accuracy, targetNote.note, this.voicePreferences);
+      // Needs work - clear direction
+      this.callbacks.onFeedback?.(isFlat ? 'Try higher ↑' : 'Try lower ↓');
     } else {
-      // Poor - gentle correction with specific info
-      const direction = isFlat ? '↑' : '↓';
-      const feedbackMsg = userNote && centsOff > 0
-        ? `${userNote} → ${targetNote.note} ${direction}`
-        : `Aim for ${targetNote.note}`;
-      this.callbacks.onFeedback?.(feedbackMsg);
-      await VoiceCoach.provideFeedback(accuracy, targetNote.note, this.voicePreferences);
+      // Poor - simple direction only
+      this.callbacks.onFeedback?.(isFlat ? 'Higher ↑' : 'Lower ↓');
     }
 
-    // Request AI coaching if struggling (3+ consecutive low scores)
-    await this.checkForAICoaching(accuracy, targetNote.note);
+    // REMOVED: Per-note voice feedback - too distracting for beginners
+    // Voice coach only speaks at exercise transitions now
+
+    // REMOVED: AI coaching during exercise - save for results screen
+    // await this.checkForAICoaching(accuracy, targetNote.note);
 
     // Move to next note (UX fix: Increased to 800ms for breathing room)
     this.currentNoteIndex++;
@@ -884,19 +925,17 @@ export class ExerciseEngine {
     // Calculate accuracy against all target frequencies in sequence
     const patternAccuracy = this.evaluateFullPattern(exercise);
 
-    // Provide feedback
+    // Provide SIMPLE feedback (max 4 words) - beginner-friendly
     this.callbacks.onFullPatternComplete?.(patternAccuracy);
 
     if (patternAccuracy >= 80) {
-      this.callbacks.onFeedback?.(`Excellent! ${patternAccuracy}% on the full pattern!`);
-      await VoiceCoach.provideFeedback(patternAccuracy, exercise.name, this.voicePreferences);
+      this.callbacks.onFeedback?.(`Excellent! ${patternAccuracy}%`);
     } else if (patternAccuracy >= 60) {
-      this.callbacks.onFeedback?.(`Good effort! ${patternAccuracy}% - keep practicing`);
-      await VoiceCoach.provideFeedback(patternAccuracy, exercise.name, this.voicePreferences);
+      this.callbacks.onFeedback?.(`Good! ${patternAccuracy}%`);
     } else {
-      this.callbacks.onFeedback?.(`${patternAccuracy}% - you'll get it with more practice!`);
-      await VoiceCoach.provideFeedback(patternAccuracy, exercise.name, this.voicePreferences);
+      this.callbacks.onFeedback?.(`${patternAccuracy}% - Keep practicing!`);
     }
+    // REMOVED: Voice feedback on full pattern - save voice for transitions only
 
     await this.delay(500);
     return patternAccuracy;
@@ -1021,6 +1060,11 @@ export class ExerciseEngine {
     if (this.noteTimeout) {
       clearTimeout(this.noteTimeout);
       this.noteTimeout = null;
+    }
+
+    if (this.listeningCountdownInterval) {
+      clearInterval(this.listeningCountdownInterval);
+      this.listeningCountdownInterval = null;
     }
 
     if (this.breathingInterval) {

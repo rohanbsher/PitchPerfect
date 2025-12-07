@@ -45,6 +45,7 @@ const DEFAULT_PROGRESS: UserProgress = {
   averageAccuracy: 0,
   exercisesCompleted: [],
   favoritesExercises: [],
+  lastSessionDate: '',
 };
 
 const DEFAULT_SETTINGS: UserSettings = {
@@ -270,6 +271,38 @@ function calculateAverageAccuracy(sessions: SessionRecord[]): number {
 }
 
 /**
+ * Save detected vocal range from range check
+ * This directly sets the vocal range (not cumulative like session-based updates)
+ */
+export async function saveVocalRange(
+  lowestNote: string,
+  lowestFrequency: number,
+  highestNote: string,
+  highestFrequency: number
+): Promise<void> {
+  try {
+    const progress = await getUserProgress();
+
+    progress.vocalRange = {
+      lowest: lowestNote,
+      lowestFrequency,
+      highest: highestNote,
+      highestFrequency,
+      // For simple range check, comfortable = detected range
+      comfortableLow: lowestNote,
+      comfortableHigh: highestNote,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    await saveUserProgress(progress);
+    console.log('[Storage] Vocal range saved:', lowestNote, '-', highestNote);
+  } catch (error) {
+    console.error('[Storage] Failed to save vocal range:', error);
+    throw error;
+  }
+}
+
+/**
  * Get user statistics for display
  */
 export async function getUserStats(): Promise<UserStats> {
@@ -301,7 +334,8 @@ export async function getUserStats(): Promise<UserStats> {
   if (last7Days.length > 0 && previous7Days.length > 0) {
     const recentAvg = last7Days.reduce((sum, s) => sum + s.accuracy, 0) / last7Days.length;
     const previousAvg = previous7Days.reduce((sum, s) => sum + s.accuracy, 0) / previous7Days.length;
-    improvementRate = Math.round(((recentAvg - previousAvg) / previousAvg) * 100);
+    // Guard against division by zero
+    improvementRate = previousAvg > 0 ? Math.round(((recentAvg - previousAvg) / previousAvg) * 100) : 0;
   }
 
   return {

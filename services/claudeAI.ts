@@ -470,9 +470,6 @@ export async function generateRangeSafetyCoaching(
     return null;
   }
 
-  // Determine if outside comfortable range
-  const isOutsideComfort = true; // Caller should pre-filter this
-
   try {
     const message = await withTimeout(
       client.messages.create({

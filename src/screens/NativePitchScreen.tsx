@@ -26,15 +26,17 @@ import type { RouteProp } from '@react-navigation/native';
 import { useNativePitchDetector } from '../hooks/useNativePitchDetector';
 import { Audio } from 'expo-av';
 import { ExerciseEngine, ExerciseState, BreathingState } from '../engines/ExerciseEngine';
+import { RangeCheckEngine, RangeCheckState, RangeCheckResult, DetectedNote } from '../engines/RangeCheckEngine';
 import { ExerciseNote, DAILY_WORKOUTS, QUICK_WARMUPS, EXERCISE_CATEGORIES, CATEGORY_INFO, EXERCISES, BREATHING_EXERCISES, type ExerciseCategory, getDefaultBreathingExercise, generateRangeBasedScale } from '../data/exercises';
 import { useStorage } from '../hooks/useStorage';
-import { getUserSettings, getUserProgress } from '../services/storage';
+import { getUserSettings, getUserProgress, saveVocalRange } from '../services/storage';
 import type { RootStackParamList, TabParamList } from '../navigation/AppNavigator';
 import { CoachingBubble } from '../components/CoachingBubble';
 import type { ComfortableRange, AdaptationInfo } from '../services/exerciseAdaptation';
 import { QuickWarmupCard } from '../components/QuickWarmupCard';
 import { ExerciseCategoryCard } from '../components/ExerciseCategoryCard';
 import { VoiceCoach } from '../services/voiceCoaching';
+import { appController } from '../services/appController';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -100,6 +102,9 @@ export const NativePitchScreen: React.FC = () => {
   const [aiCoachingTip, setAiCoachingTip] = useState<string | null>(null);
   const [showAICoaching, setShowAICoaching] = useState(false);
 
+  // Listening countdown state (shows 3...2...1... during singing)
+  const [listeningCountdown, setListeningCountdown] = useState<number | null>(null);
+
   // Range adaptation state
   const [userRange, setUserRange] = useState<ComfortableRange | null>(null);
   const [adaptationInfo, setAdaptationInfo] = useState<AdaptationInfo[]>([]);
@@ -117,6 +122,15 @@ export const NativePitchScreen: React.FC = () => {
 
   // Loading state for exercise initialization
   const [isInitializing, setIsInitializing] = useState(false);
+
+  // Range check state
+  const rangeCheckEngineRef = useRef<RangeCheckEngine | null>(null);
+  const [rangeCheckState, setRangeCheckState] = useState<RangeCheckState>('idle');
+  const [rangeCheckCurrentPitch, setRangeCheckCurrentPitch] = useState<string | null>(null);
+  const [rangeCheckCountdown, setRangeCheckCountdown] = useState<number | null>(null);
+  const [rangeCheckListeningCountdown, setRangeCheckListeningCountdown] = useState<number | null>(null);
+  const [rangeCheckLowNote, setRangeCheckLowNote] = useState<DetectedNote | null>(null);
+  const [rangeCheckHighNote, setRangeCheckHighNote] = useState<DetectedNote | null>(null);
 
   // Shared values for animations
   const targetPitchY = useSharedValue(-100); // Off screen by default
@@ -141,6 +155,11 @@ export const NativePitchScreen: React.FC = () => {
       // Feed pitch data to exercise engine if running
       if (exerciseEngineRef.current?.isActive()) {
         exerciseEngineRef.current.recordPitch(data.frequency, data.confidence);
+      }
+
+      // Feed pitch data to range check engine if running
+      if (rangeCheckEngineRef.current?.isActive()) {
+        rangeCheckEngineRef.current.recordPitch(data.frequency, data.confidence);
       }
     },
   });
@@ -216,13 +235,16 @@ export const NativePitchScreen: React.FC = () => {
       onBreathingUpdate: (state) => {
         setBreathingState(state);
       },
-      onAICoaching: (tip) => {
-        setAiCoachingTip(tip);
-        setShowAICoaching(true);
-        // Auto-hide after 8 seconds (matches CoachingBubble animation)
-        setTimeout(() => {
-          setShowAICoaching(false);
-        }, 8000);
+      // DISABLED: AI coaching during exercise - too distracting for beginners
+      // AI tips will only be shown on the results screen now
+      onAICoaching: (_tip) => {
+        // No-op during exercise - save AI tips for results screen
+        // setAiCoachingTip(tip);
+        // setShowAICoaching(true);
+      },
+      onListeningCountdown: (secondsRemaining) => {
+        // Update countdown display during singing (3...2...1...)
+        setListeningCountdown(secondsRemaining > 0 ? secondsRemaining : null);
       },
       onRangeAnalysis: (range) => {
         setUserRange(range);
@@ -283,17 +305,31 @@ export const NativePitchScreen: React.FC = () => {
     }
   }, [route.params]);
 
-  // Start/stop pitch detection based on exercise state
+  // Start/stop pitch detection based on exercise state or range check state
   // This prevents the race condition with voice assistant by only starting audio when needed
   useEffect(() => {
-    if (exerciseState !== 'idle' && exerciseState !== 'complete') {
-      // Start pitch detection when exercise begins
+    const exerciseRunning = exerciseState !== 'idle' && exerciseState !== 'complete';
+    const rangeCheckRunning = rangeCheckState !== 'idle' && rangeCheckState !== 'complete';
+
+    if (exerciseRunning || rangeCheckRunning) {
+      // Start pitch detection when exercise or range check begins
       startDetection();
     } else {
-      // Stop when exercise ends (idle or complete)
+      // Stop when both are idle or complete
       stopDetection();
     }
-  }, [exerciseState, startDetection, stopDetection]);
+  }, [exerciseState, rangeCheckState, startDetection, stopDetection]);
+
+  // Register pitch detector callbacks with appController for voice assistant coordination
+  // Voice assistant needs to pause pitch detector to avoid audio session conflicts
+  useEffect(() => {
+    appController.setPitchDetectorCallbacks(stopDetection, startDetection);
+
+    // Cleanup on unmount
+    return () => {
+      appController.setPitchDetectorCallbacks(null, null);
+    };
+  }, [stopDetection, startDetection]);
 
   // Update progress info when exercise state changes
   useEffect(() => {
@@ -345,6 +381,10 @@ export const NativePitchScreen: React.FC = () => {
     const warmup = QUICK_WARMUPS.find(w => w.id === warmupId);
     if (!warmup) return;
 
+    // IMMEDIATELY transition to workout view for responsive UX
+    setViewMode('workout');
+    setIsInitializing(true);
+
     // Special handling for personal_scale - generate dynamic exercise
     if (warmupId === 'personal_scale') {
       // Fetch user's vocal range
@@ -355,9 +395,6 @@ export const NativePitchScreen: React.FC = () => {
       // Generate personalized scale exercise
       const personalExercise = generateRangeBasedScale(comfortableLow, comfortableHigh, 2);
 
-      // Personalized greeting before starting
-      await VoiceCoach.greetForPersonalScale();
-
       const workout = {
         id: 'personal_scale',
         name: 'Your Personal Scale',
@@ -366,24 +403,86 @@ export const NativePitchScreen: React.FC = () => {
         details: ['Personalized 5-note scale in your comfortable range'],
         exercises: [personalExercise],
       };
+      // Voice greeting plays asynchronously while UI is already visible
+      VoiceCoach.greetForPersonalScale();
       exerciseEngineRef.current?.startWorkout(workout);
       return;
     }
 
-    // Special handling for range_check - explain what we're doing
+    // Special handling for range_check - use the new simple RangeCheckEngine
     if (warmupId === 'range_check') {
-      // Voice greeting explaining the range test
-      await VoiceCoach.greetForRangeTest();
+      // Reset range check state
+      setRangeCheckLowNote(null);
+      setRangeCheckHighNote(null);
+      setRangeCheckCurrentPitch(null);
 
-      const workout = {
-        id: warmup.id,
-        name: warmup.name,
-        description: warmup.description,
-        duration: warmup.duration,
-        details: [warmup.description],
-        exercises: warmup.exercises,
-      };
-      exerciseEngineRef.current?.startWorkout(workout);
+      // Get voice settings
+      const settings = await getUserSettings();
+
+      // Create RangeCheckEngine with callbacks
+      rangeCheckEngineRef.current = new RangeCheckEngine(
+        {
+          onStateChange: (state) => {
+            setRangeCheckState(state);
+            // Clear initializing when range check starts
+            if (state !== 'idle') {
+              setIsInitializing(false);
+            }
+          },
+          onCurrentPitch: (note) => {
+            setRangeCheckCurrentPitch(note);
+          },
+          onCountdownUpdate: (count) => {
+            setRangeCheckCountdown(count);
+          },
+          onListeningCountdown: (seconds) => {
+            setRangeCheckListeningCountdown(seconds > 0 ? seconds : null);
+          },
+          onLowNoteDetected: (note) => {
+            setRangeCheckLowNote(note);
+          },
+          onHighNoteDetected: (note) => {
+            setRangeCheckHighNote(note);
+          },
+          onComplete: async (result) => {
+            // Save the vocal range
+            try {
+              await saveVocalRange(
+                result.lowest.note,
+                result.lowest.frequency,
+                result.highest.note,
+                result.highest.frequency
+              );
+
+              // Navigate to results screen
+              setTimeout(() => {
+                navigation.navigate('Results', {
+                  accuracy: 100, // Range check is pass/fail
+                  notesHit: 2,
+                  notesAttempted: 2,
+                  duration: 30, // Approximate
+                  exerciseName: 'Range Check',
+                  lowestNote: result.lowest.note,
+                  highestNote: result.highest.note,
+                });
+                // Reset state
+                setRangeCheckState('idle');
+                setViewMode('home');
+              }, 2000);
+            } catch (error) {
+              console.error('[RangeCheck] Failed to save range:', error);
+            }
+          },
+        },
+        {
+          enabled: settings.voiceCoachEnabled,
+          speed: settings.voiceCoachSpeed,
+          pitch: settings.voiceCoachPitch,
+        }
+      );
+
+      // Start the range check
+      rangeCheckEngineRef.current.start();
       return;
     }
 
@@ -574,7 +673,10 @@ export const NativePitchScreen: React.FC = () => {
                   workout.recommended && styles.fullWorkoutCardRecommended,
                 ]}
                 onPress={() => {
-                  exerciseEngineRef.current?.startIntegratedWorkout();
+                  // IMMEDIATELY transition to workout view for responsive UX
+                  setViewMode('workout');
+                  setIsInitializing(true);
+                  exerciseEngineRef.current?.startIntegratedWorkout(undefined, workout);
                 }}
                 activeOpacity={0.7}
               >
@@ -754,9 +856,16 @@ export const NativePitchScreen: React.FC = () => {
           <View style={styles.exerciseStateContainer}>
             <Text style={styles.exerciseStateText}>
               {exerciseState === 'playing_reference' ? 'Listen...' :
-               exerciseState === 'listening' ? 'Sing!' :
+               exerciseState === 'listening' ? 'SING!' :
                exerciseState === 'evaluating' ? '...' : ''}
             </Text>
+          </View>
+        ) : null}
+
+        {/* Listening countdown - big visible timer during singing (3...2...1...) */}
+        {exerciseState === 'listening' && listeningCountdown !== null && listeningCountdown > 0 ? (
+          <View style={styles.listeningCountdownContainer}>
+            <Text style={styles.listeningCountdownNumber}>{listeningCountdown}</Text>
           </View>
         ) : null}
 
@@ -791,6 +900,64 @@ export const NativePitchScreen: React.FC = () => {
               activeOpacity={0.7}
             >
               <Text style={styles.skipButtonText}>Skip to Workout →</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        {/* Range Check UI overlay */}
+        {rangeCheckState !== 'idle' && rangeCheckState !== 'complete' ? (
+          <View style={styles.rangeCheckOverlay}>
+            {/* Prompt text */}
+            <Text style={styles.rangeCheckTitle}>
+              {rangeCheckState === 'intro' ? 'Find Your Range' :
+               rangeCheckState === 'prompt_low' || rangeCheckState === 'countdown_low' ? 'Sing your LOWEST note' :
+               rangeCheckState === 'listening_low' ? 'Sing LOW...' :
+               rangeCheckState === 'prompt_high' || rangeCheckState === 'countdown_high' ? 'Sing your HIGHEST note' :
+               rangeCheckState === 'listening_high' ? 'Sing HIGH...' : ''}
+            </Text>
+
+            {/* Countdown before listening */}
+            {rangeCheckCountdown !== null ? (
+              <Text style={styles.rangeCheckCountdown}>{rangeCheckCountdown}</Text>
+            ) : null}
+
+            {/* Live pitch display during listening */}
+            {(rangeCheckState === 'listening_low' || rangeCheckState === 'listening_high') ? (
+              <>
+                <Text style={styles.rangeCheckCurrentPitch}>
+                  {rangeCheckCurrentPitch || '...'}
+                </Text>
+                {rangeCheckListeningCountdown !== null ? (
+                  <Text style={styles.rangeCheckListeningTimer}>{rangeCheckListeningCountdown}s</Text>
+                ) : null}
+              </>
+            ) : null}
+
+            {/* Show detected notes */}
+            {rangeCheckLowNote ? (
+              <View style={styles.rangeCheckDetectedNote}>
+                <Text style={styles.rangeCheckDetectedLabel}>Low:</Text>
+                <Text style={styles.rangeCheckDetectedValue}>{rangeCheckLowNote.note}</Text>
+              </View>
+            ) : null}
+            {rangeCheckHighNote ? (
+              <View style={styles.rangeCheckDetectedNote}>
+                <Text style={styles.rangeCheckDetectedLabel}>High:</Text>
+                <Text style={styles.rangeCheckDetectedValue}>{rangeCheckHighNote.note}</Text>
+              </View>
+            ) : null}
+
+            {/* Stop button */}
+            <TouchableOpacity
+              style={styles.rangeCheckStopButton}
+              onPress={async () => {
+                await rangeCheckEngineRef.current?.stop();
+                setRangeCheckState('idle');
+                setViewMode('home');
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.rangeCheckStopText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -1051,9 +1218,24 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   exerciseStateText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 18,
+    fontWeight: '700',
+    color: ACCENT_COLOR,
+  },
+  // Listening countdown styles - big visible timer during singing
+  listeningCountdownContainer: {
+    position: 'absolute',
+    top: '35%',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 30,
+  },
+  listeningCountdownNumber: {
+    fontSize: 120,
+    fontWeight: '800',
+    color: 'rgba(16, 185, 129, 0.4)',
+    textAlign: 'center',
   },
   hearAgainButton: {
     position: 'absolute',
@@ -1144,6 +1326,77 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     borderColor: '#10B981',
+  },
+  // Range Check overlay styles
+  rangeCheckOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    zIndex: 30,
+  },
+  rangeCheckTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#10B981',
+    marginBottom: 24,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  rangeCheckCountdown: {
+    fontSize: 120,
+    fontWeight: '800',
+    color: 'rgba(16, 185, 129, 0.6)',
+  },
+  rangeCheckCurrentPitch: {
+    fontSize: 72,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  rangeCheckListeningTimer: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.5)',
+    marginBottom: 20,
+  },
+  rangeCheckDetectedNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  rangeCheckDetectedLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginRight: 8,
+  },
+  rangeCheckDetectedValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#10B981',
+  },
+  rangeCheckStopButton: {
+    marginTop: 40,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.5)',
+  },
+  rangeCheckStopText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#EF4444',
   },
   skipButtonText: {
     fontSize: 14,

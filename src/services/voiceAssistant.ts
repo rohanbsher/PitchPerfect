@@ -68,11 +68,12 @@ class VoiceAssistantService {
     console.log('[VoiceAssistant] Service created (initialization deferred)');
   }
 
-  private initializeSpeechRecognition(): void {
+  private async initializeSpeechRecognition(): Promise<void> {
     if (this.isInitialized) return;
 
     try {
-      speechRecognition.setCallbacks({
+      // setCallbacks is async - must await it
+      await speechRecognition.setCallbacks({
         onResult: this.handleSpeechResult.bind(this),
         onPartialResult: this.handlePartialResult.bind(this),
         onError: this.handleSpeechError.bind(this),
@@ -692,11 +693,11 @@ class VoiceAssistantService {
     }
 
     if (actionType === 'start_exercise') {
-      if (lowerLabel.includes('scale')) return { exerciseId: 'warmup-scale' };
-      if (lowerLabel.includes('arpeggio')) return { exerciseId: 'major-arpeggio' };
+      if (lowerLabel.includes('scale')) return { exerciseId: 'warmup_scale' };
+      if (lowerLabel.includes('arpeggio')) return { exerciseId: 'major_arpeggio' };
       if (lowerLabel.includes('siren')) return { exerciseId: 'siren' };
-      if (lowerLabel.includes('octave')) return { exerciseId: 'octave-jump' };
-      return { exerciseId: 'warmup-scale' };
+      if (lowerLabel.includes('octave')) return { exerciseId: 'octave_jump' };
+      return { exerciseId: 'warmup_scale' };
     }
 
     if (actionType === 'navigate') {
@@ -729,7 +730,7 @@ class VoiceAssistantService {
         offeredOptions = [
           { index: 0, label: 'Quick warmup', actionType: 'start_workout', actionParams: { workout: 'quick_warmup' } },
           { index: 1, label: 'Breathing exercises', actionType: 'start_breathing' },
-          { index: 2, label: 'Scales', actionType: 'start_exercise', actionParams: { exerciseId: 'warmup-scale' } },
+          { index: 2, label: 'Scales', actionType: 'start_exercise', actionParams: { exerciseId: 'warmup_scale' } },
         ];
         conversationState.setLastOfferedOptions(offeredOptions);
         conversationState.setExpectingResponse(true);
@@ -776,6 +777,28 @@ class VoiceAssistantService {
   }
 
   /**
+   * Start listening with retry logic for resilience
+   */
+  private async startListeningWithRetry(maxRetries: number = 3): Promise<boolean> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      console.log(`[VoiceAssistant] Starting listening (attempt ${attempt}/${maxRetries})`);
+
+      const success = await speechRecognition.startListening();
+
+      if (success) {
+        return true;
+      }
+
+      if (attempt < maxRetries) {
+        console.log('[VoiceAssistant] Listen failed, waiting before retry...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Activate voice assistant (start listening)
    */
   async activate(preserveContext = false): Promise<boolean> {
@@ -787,8 +810,19 @@ class VoiceAssistantService {
     console.log('[VoiceAssistant] Activating...');
 
     try {
+      // CRITICAL: Fully pause pitch detector AND release audio session
+      // Both pitch detector and voice recognition need microphone access,
+      // and having both active simultaneously causes a native crash
+      const pauseSuccess = await appController.pausePitchDetectorFully();
+      if (!pauseSuccess) {
+        console.warn('[VoiceAssistant] Failed to fully pause pitch detector, continuing anyway');
+      }
+
+      // Increased delay (500ms) to let iOS audio system settle after releasing audio session
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Initialize speech recognition on-demand (deferred from startup to prevent crashes)
-      this.initializeSpeechRecognition();
+      await this.initializeSpeechRecognition();
 
       // Clear timeouts
       this.clearSilenceTimeout();
@@ -805,18 +839,28 @@ class VoiceAssistantService {
         conversationState.startConversation(appState, progress);
       }
 
-      const success = await speechRecognition.startListening();
+      // Start listening with retry for resilience
+      const success = await this.startListeningWithRetry(3);
 
       if (success) {
         this.setState('listening');
         return true;
       } else {
+        console.error('[VoiceAssistant] Failed to start listening after retries');
         this.setState('error');
+
+        // Recovery: restore pitch detector since voice assistant failed
+        await appController.resumePitchDetectorFully();
+
         return false;
       }
     } catch (error: any) {
       console.error('[VoiceAssistant] Activation failed:', error);
       this.setState('error');
+
+      // Recovery: restore pitch detector
+      await appController.resumePitchDetectorFully();
+
       return false;
     }
   }
@@ -830,6 +874,12 @@ class VoiceAssistantService {
     await speechRecognition.cancel();
     await VoiceCoach.stop();
     this.endConversation();
+
+    // Wait for voice recognition to fully release audio session
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Restore pitch detector with fresh audio session
+    await appController.resumePitchDetectorFully();
   }
 
   /**
