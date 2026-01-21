@@ -473,25 +473,25 @@ export const EXERCISE_CATEGORIES: CategorizedExercises = {
   ],
 };
 
-export const CATEGORY_INFO: Record<ExerciseCategory, { title: string; emoji: string; description: string }> = {
+export const CATEGORY_INFO: Record<ExerciseCategory, { title: string; icon: string; description: string }> = {
   warmups: {
     title: 'Warmups',
-    emoji: '🔥',
+    icon: 'flame-outline',
     description: 'Start your practice with gentle scales',
   },
   arpeggios: {
     title: 'Arpeggios & Intervals',
-    emoji: '🎹',
+    icon: 'musical-notes-outline',
     description: 'Build control and accuracy',
   },
   range: {
     title: 'Range Building',
-    emoji: '🚀',
+    icon: 'trending-up-outline',
     description: 'Expand your vocal range',
   },
   breathing: {
     title: 'Breathing',
-    emoji: '💨',
+    icon: 'water-outline',
     description: 'Master breath control',
   },
 };
@@ -501,7 +501,7 @@ export const CATEGORY_INFO: Record<ExerciseCategory, { title: string; emoji: str
 export interface QuickWarmup {
   id: string;
   name: string;
-  emoji: string;
+  icon: string;
   duration: string;
   description: string;
   exercises: Exercise[];
@@ -512,7 +512,7 @@ export const QUICK_WARMUPS: QuickWarmup[] = [
   {
     id: 'morning_warmup',
     name: 'Morning Warmup',
-    emoji: '☀️',
+    icon: 'sunny-outline',
     duration: '4 min',
     description: 'Perfect way to wake up your voice',
     breathingExercise: BREATHING_EXERCISES.four_seven_eight,
@@ -524,7 +524,7 @@ export const QUICK_WARMUPS: QuickWarmup[] = [
   {
     id: 'breathing_only',
     name: 'Breathing Only',
-    emoji: '💨',
+    icon: 'water-outline',
     duration: '2 min',
     description: 'Focus on breath control and support',
     breathingExercise: BREATHING_EXERCISES.four_seven_eight,
@@ -533,7 +533,7 @@ export const QUICK_WARMUPS: QuickWarmup[] = [
   {
     id: 'vocal_wakeup',
     name: 'Vocal Wake-up',
-    emoji: '🎵',
+    icon: 'musical-notes-outline',
     duration: '3 min',
     description: 'Quick scales and arpeggios',
     exercises: [
@@ -545,7 +545,7 @@ export const QUICK_WARMUPS: QuickWarmup[] = [
   {
     id: 'range_check',
     name: 'Check Your Range',
-    emoji: '📏',
+    icon: 'analytics-outline',
     duration: '2 min',
     description: 'Test your full vocal range',
     exercises: [
@@ -555,7 +555,7 @@ export const QUICK_WARMUPS: QuickWarmup[] = [
   {
     id: 'personal_scale',
     name: 'Your Personal Scale',
-    emoji: '🎯',
+    icon: 'radio-button-on',
     duration: '1 min',
     description: 'A 5-note scale in your comfortable range',
     exercises: [], // Dynamically generated based on user's vocal range

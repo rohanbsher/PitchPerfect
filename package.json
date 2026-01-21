@@ -8,6 +8,10 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web --port 8082",
+    "typecheck": "tsc --noEmit",
+    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext .ts,.tsx",
+    "lint:fix": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"services/**/*.ts\"",
     "postinstall": "patch-package"
   },
   "dependencies": {
@@ -24,10 +28,10 @@
     "expo": "~54.0.10",
     "expo-av": "~16.0.7",
     "expo-blur": "~15.0.7",
-    "expo-dev-client": "~6.0.13",
     "expo-haptics": "~15.0.7",
     "expo-linear-gradient": "~15.0.7",
     "expo-speech": "~14.0.7",
+    "expo-sqlite": "~16.0.10",
     "expo-status-bar": "~3.0.8",
     "husky": "^9.0.11",
     "lottie-react-native": "~7.3.1",
@@ -42,10 +46,20 @@
     "react-native-screens": "~4.16.0",
     "react-native-web": "^0.21.0",
     "react-native-worklets": "^0.5.1",
-    "tone": "^15.1.22"
+    "tone": "^15.1.22",
+    "zustand": "^5.0.10"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@types/react": "~19.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.53.1",
+    "@typescript-eslint/parser": "^8.53.1",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "prettier": "^3.8.0",
     "typescript": "~5.9.2"
   },
   "private": true

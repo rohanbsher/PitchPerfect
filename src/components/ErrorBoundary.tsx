@@ -12,6 +12,8 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, borderRadius, opacity } from '../theme';
 
 interface Props {
   children: ReactNode;
@@ -49,7 +51,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
       return (
         <View style={styles.container}>
-          <Text style={styles.emoji}>oops</Text>
+          <View style={styles.iconContainer}>
+            <Ionicons name="warning-outline" size={48} color={colors.error} />
+          </View>
           <Text style={styles.title}>Something went wrong</Text>
           <Text style={styles.message}>
             The app encountered an unexpected error.
@@ -72,39 +76,42 @@ export class ErrorBoundary extends Component<Props, State> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
   },
-  emoji: {
-    fontSize: 48,
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: opacity.error10,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 24,
-    color: 'rgba(255,255,255,0.3)',
-    fontWeight: '200',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 12,
     textAlign: 'center',
   },
   message: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.6)',
+    color: colors.textTertiary,
     textAlign: 'center',
     marginBottom: 32,
     lineHeight: 24,
   },
   button: {
-    backgroundColor: '#10B981',
+    backgroundColor: colors.primary,
     paddingHorizontal: 32,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },

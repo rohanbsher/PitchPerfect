@@ -15,6 +15,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-nati
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Audio } from 'expo-av';
 import { FrequencyHeatmapEntry, FrequencyCategory } from '../services/rangeAnalysis';
+import { colors, borderRadius, opacity } from '../theme';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -38,14 +39,14 @@ const isBlackKey = (note: string): boolean => {
 const getCategoryColor = (category: FrequencyCategory): string => {
   switch (category) {
     case 'comfortable':
-      return '#10B981'; // Green
+      return colors.success;
     case 'extended':
-      return '#F59E0B'; // Yellow/Orange
+      return colors.warning;
     case 'struggling':
-      return '#EF4444'; // Red
+      return colors.error;
     case 'untested':
     default:
-      return '#3A3A3A'; // Gray
+      return colors.sliderTrack;
   }
 };
 
@@ -279,8 +280,8 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     position: 'relative',
-    backgroundColor: '#000',
-    borderRadius: 12,
+    backgroundColor: colors.keyboardBackground,
+    borderRadius: borderRadius.md,
     overflow: 'hidden',
   },
   whiteKey: {
@@ -288,43 +289,43 @@ const styles = StyleSheet.create({
     top: 0,
     height: '100%',
     borderRightWidth: 1,
-    borderColor: '#1A1A1A',
+    borderColor: colors.card,
   },
   whiteKeyInner: {
     flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingBottom: 12,
-    borderRadius: 4,
+    borderRadius: borderRadius.xs,
   },
   blackKey: {
     position: 'absolute',
     top: 0,
     height: '60%',
     zIndex: 10,
-    borderRadius: 4,
+    borderRadius: borderRadius.xs,
   },
   blackKeyInner: {
     flex: 1,
-    borderRadius: 4,
+    borderRadius: borderRadius.xs,
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingBottom: 8,
   },
   keyLabel: {
     fontSize: 11,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontWeight: '600',
     marginBottom: 4,
   },
   whiteKeyAccuracy: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.8)',
+    color: opacity.white80,
     fontWeight: '700',
   },
   blackKeyAccuracy: {
     fontSize: 9,
-    color: 'rgba(255,255,255,0.9)',
+    color: opacity.white90,
     fontWeight: '700',
   },
 });

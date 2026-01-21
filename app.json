@@ -43,8 +43,8 @@
       "assets/**/*"
     ],
     "plugins": [
-      "expo-dev-client",
-      "@mykin-ai/expo-audio-stream"
+      "@mykin-ai/expo-audio-stream",
+      "expo-sqlite"
     ],
     "extra": {
       "eas": {

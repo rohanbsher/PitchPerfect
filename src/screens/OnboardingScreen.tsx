@@ -16,14 +16,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+type IoniconsName = keyof typeof Ionicons.glyphMap;
 
 interface OnboardingSlide {
   id: string;
   title: string;
   subtitle: string;
-  visual: string;
+  icon: IoniconsName;
 }
 
 const SLIDES: OnboardingSlide[] = [
@@ -31,19 +35,19 @@ const SLIDES: OnboardingSlide[] = [
     id: '1',
     title: 'See Your Voice',
     subtitle: 'Sing and watch your pitch move in real-time. The green bar is you.',
-    visual: '🎵',
+    icon: 'musical-notes',
   },
   {
     id: '2',
     title: 'Match the Target',
     subtitle: 'During exercises, match the purple target note. Get feedback instantly.',
-    visual: '🎯',
+    icon: 'radio-button-on',
   },
   {
     id: '3',
     title: 'Track Progress',
     subtitle: 'Build your streak, improve accuracy, and expand your range.',
-    visual: '📈',
+    icon: 'trending-up',
   },
 ];
 
@@ -70,12 +74,12 @@ export function OnboardingScreen({ onComplete }: Props) {
 
   const renderSlide = ({ item }: { item: OnboardingSlide }) => (
     <View style={styles.slide}>
-      <Animated.Text
+      <Animated.View
         entering={FadeIn.delay(200)}
-        style={styles.visual}
+        style={styles.iconContainer}
       >
-        {item.visual}
-      </Animated.Text>
+        <Ionicons name={item.icon} size={64} color={colors.primary} />
+      </Animated.View>
       <Animated.Text
         entering={FadeInUp.delay(400)}
         style={styles.title}
@@ -147,7 +151,7 @@ export function OnboardingScreen({ onComplete }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: colors.background,
   },
   skipButton: {
     position: 'absolute',
@@ -157,7 +161,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   skipText: {
-    color: 'rgba(255,255,255,0.5)',
+    color: colors.textMuted,
     fontSize: 16,
   },
   slide: {
@@ -167,20 +171,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 40,
   },
-  visual: {
-    fontSize: 80,
+  iconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 40,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: 16,
   },
   subtitle: {
     fontSize: 18,
-    color: 'rgba(255,255,255,0.7)',
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 26,
   },
@@ -198,20 +207,20 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: colors.indicatorInactive,
   },
   dotActive: {
-    backgroundColor: '#10B981',
+    backgroundColor: colors.primary,
     width: 24,
   },
   button: {
-    backgroundColor: '#10B981',
+    backgroundColor: colors.primary,
     paddingVertical: 18,
     borderRadius: 14,
     alignItems: 'center',
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '600',
   },

@@ -7,6 +7,7 @@
 
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -14,6 +15,7 @@ import Animated, {
   withSequence,
   Easing,
 } from 'react-native-reanimated';
+import { colors, borderRadius, opacity } from '../theme';
 
 interface CoachingBubbleProps {
   message: string | null;
@@ -67,7 +69,7 @@ export const CoachingBubble: React.FC<CoachingBubbleProps> = ({ message, visible
     <Animated.View style={[styles.container, animatedStyle]}>
       <View style={styles.bubble}>
         <View style={styles.iconContainer}>
-          <Text style={styles.icon}>🎯</Text>
+          <Ionicons name="radio-button-on" size={28} color={colors.textPrimary} />
         </View>
         <View style={styles.textContainer}>
           <Text style={styles.label}>Coach</Text>
@@ -88,8 +90,8 @@ const styles = StyleSheet.create({
   },
   bubble: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(147, 51, 234, 0.95)', // Purple-600 with opacity
-    borderRadius: 16,
+    backgroundColor: colors.coachingBubble,
+    borderRadius: borderRadius.lg,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -98,11 +100,13 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   iconContainer: {
-    marginRight: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: opacity.white15,
+    alignItems: 'center',
     justifyContent: 'center',
-  },
-  icon: {
-    fontSize: 32,
+    marginRight: 12,
   },
   textContainer: {
     flex: 1,
@@ -110,7 +114,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: opacity.white90,
     marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -118,7 +122,7 @@ const styles = StyleSheet.create({
   message: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     lineHeight: 21,
   },
 });

@@ -7,12 +7,16 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { QuickWarmup } from '../data/exercises';
+import { colors, borderRadius, opacity } from '../theme';
 
 interface QuickWarmupCardProps {
   warmup: QuickWarmup;
   onPress: () => void;
 }
+
+type IoniconsName = keyof typeof Ionicons.glyphMap;
 
 export function QuickWarmupCard({ warmup, onPress }: QuickWarmupCardProps) {
   return (
@@ -22,7 +26,9 @@ export function QuickWarmupCard({ warmup, onPress }: QuickWarmupCardProps) {
       activeOpacity={0.7}
     >
       <View style={styles.header}>
-        <Text style={styles.emoji}>{warmup.emoji}</Text>
+        <View style={styles.iconContainer}>
+          <Ionicons name={warmup.icon as IoniconsName} size={24} color={colors.primary} />
+        </View>
         <View style={styles.headerText}>
           <Text style={styles.name}>{warmup.name}</Text>
           <Text style={styles.duration}>{warmup.duration}</Text>
@@ -36,7 +42,7 @@ export function QuickWarmupCard({ warmup, onPress }: QuickWarmupCardProps) {
           {warmup.breathingExercise ? 'Breathing + ' : ''}
           {warmup.exercises.length} exercise{warmup.exercises.length !== 1 ? 's' : ''}
         </Text>
-        <Text style={styles.arrow}>→</Text>
+        <Ionicons name="chevron-forward" size={20} color={colors.primary} />
       </View>
     </TouchableOpacity>
   );
@@ -44,12 +50,12 @@ export function QuickWarmupCard({ warmup, onPress }: QuickWarmupCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.lg,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: colors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -61,8 +67,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  emoji: {
-    fontSize: 40,
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.md,
+    backgroundColor: opacity.primary10,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 16,
   },
   headerText: {
@@ -71,17 +82,17 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   duration: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10B981',
+    color: colors.primary,
   },
   description: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.6)',
+    color: colors.textTertiary,
     lineHeight: 20,
     marginBottom: 16,
   },
@@ -91,15 +102,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#2A2A2A',
+    borderTopColor: colors.border,
   },
   exercises: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
+    color: colors.textMuted,
     fontWeight: '600',
-  },
-  arrow: {
-    fontSize: 20,
-    color: '#10B981',
   },
 });

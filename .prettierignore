@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+backend/dist/
+.expo/
+
+# Native code
+ios/
+android/
+
+# Misc
+*.md
+*.json
+*.lock

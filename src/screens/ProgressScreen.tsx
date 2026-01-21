@@ -17,40 +17,20 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  ActivityIndicator,
   TouchableOpacity,
-  Animated,
   Modal,
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useStorage } from '../hooks/useStorage';
 import { SessionRecord } from '../types/userProgress';
+import { colors } from '../theme';
+import { SkeletonLoader } from '../components/SkeletonLoader';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SESSIONS_PER_PAGE = 10;
-
-// ============== DESIGN TOKENS ==============
-const colors = {
-  primary: '#10B981',
-  primaryDark: '#059669',
-  primaryLight: '#34D399',
-  background: '#0A0A0A',
-  card: '#1A1A1A',
-  cardHighlight: '#242424',
-  border: '#2A2A2A',
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255,255,255,0.7)',
-  textMuted: 'rgba(255,255,255,0.4)',
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  gold: '#F59E0B',
-  silver: '#9CA3AF',
-  bronze: '#CD7F32',
-  flame: '#FF6B35',
-};
 
 // ============== UTILITY FUNCTIONS ==============
 const formatTime = (seconds: number): string => {
@@ -96,7 +76,13 @@ const StreakDisplay = ({
   return (
     <View style={streakStyles.container}>
       <View style={streakStyles.mainStreak}>
-        <Text style={streakStyles.flameIcon}>{isOnFire ? '🔥' : '✨'}</Text>
+        <View style={streakStyles.flameIconContainer}>
+          <Ionicons
+            name={isOnFire ? 'flame' : 'sparkles'}
+            size={40}
+            color={isOnFire ? colors.flame : colors.gold}
+          />
+        </View>
         <View style={streakStyles.streakInfo}>
           <Text style={streakStyles.streakValue}>{currentStreak}</Text>
           <Text style={streakStyles.streakLabel}>Day Streak</Text>
@@ -129,8 +115,7 @@ const streakStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  flameIcon: {
-    fontSize: 48,
+  flameIconContainer: {
     marginRight: 16,
   },
   streakInfo: {
@@ -1305,7 +1290,14 @@ const modalStyles = StyleSheet.create({
 // ============== EMPTY STATE ==============
 const EmptyState = ({ onStartPractice }: { onStartPractice: () => void }) => (
   <View style={emptyStyles.container}>
-    <Text style={emptyStyles.icon}>🎤</Text>
+    <View style={emptyStyles.iconContainer}>
+      <Ionicons name="mic" size={48} color={colors.primary} />
+      <View style={emptyStyles.soundWaves}>
+        <View style={[emptyStyles.wave, emptyStyles.wave1]} />
+        <View style={[emptyStyles.wave, emptyStyles.wave2]} />
+        <View style={[emptyStyles.wave, emptyStyles.wave3]} />
+      </View>
+    </View>
     <Text style={emptyStyles.title}>Start Your Journey</Text>
     <Text style={emptyStyles.subtitle}>
       Complete your first practice session to start tracking your progress!
@@ -1322,9 +1314,44 @@ const emptyStyles = StyleSheet.create({
     paddingVertical: 48,
     paddingHorizontal: 32,
   },
-  icon: {
-    fontSize: 64,
-    marginBottom: 16,
+  iconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    position: 'relative',
+  },
+  soundWaves: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wave: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: 100,
+    opacity: 0.3,
+  },
+  wave1: {
+    width: 70,
+    height: 70,
+    opacity: 0.15,
+  },
+  wave2: {
+    width: 85,
+    height: 85,
+    opacity: 0.1,
+  },
+  wave3: {
+    width: 100,
+    height: 100,
+    opacity: 0.05,
   },
   title: {
     fontSize: 22,
@@ -1388,10 +1415,20 @@ export function ProgressScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.title}>Your Progress</Text>
+          <SkeletonLoader height={130} style={{ marginBottom: 16 }} />
+          <SkeletonLoader height={80} style={{ marginBottom: 24 }} />
+          <SkeletonLoader height={150} style={{ marginBottom: 24 }} />
+          <SkeletonLoader height={200} style={{ marginBottom: 24 }} />
+          <SkeletonLoader width="50%" height={22} style={{ marginBottom: 12 }} />
+          <SkeletonLoader height={300} />
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -1493,11 +1530,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   scrollView: {
     flex: 1,

@@ -13,7 +13,9 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { VoiceAssistantState } from '../services/voiceAssistant';
+import { colors, opacity } from '../theme';
 
 interface VoiceAssistantButtonProps {
   state: VoiceAssistantState;
@@ -73,37 +75,37 @@ export function VoiceAssistantButton({
   }, [state]);
 
   // Get colors based on state
-  const getColors = () => {
+  const getStateColors = () => {
     switch (state) {
       case 'listening':
         return {
-          bg: '#10B981', // Green when listening
-          glow: 'rgba(16, 185, 129, 0.4)',
+          bg: colors.voiceListening,
+          glow: opacity.primary40,
         };
       case 'processing':
         return {
-          bg: '#8B5CF6', // Purple when processing
-          glow: 'rgba(139, 92, 246, 0.4)',
+          bg: colors.voiceProcessing,
+          glow: opacity.purple40,
         };
       case 'speaking':
         return {
-          bg: '#3B82F6', // Blue when speaking
-          glow: 'rgba(59, 130, 246, 0.4)',
+          bg: colors.voiceSpeaking,
+          glow: opacity.blue40,
         };
       case 'error':
         return {
-          bg: '#EF4444', // Red on error
-          glow: 'rgba(239, 68, 68, 0.4)',
+          bg: colors.voiceError,
+          glow: opacity.error40,
         };
       default:
         return {
-          bg: '#1A1A1A', // Dark when idle
+          bg: colors.voiceIdle,
           glow: 'transparent',
         };
     }
   };
 
-  const colors = getColors();
+  const stateColors = getStateColors();
   const isActive = state !== 'idle';
 
   return (
@@ -120,7 +122,7 @@ export function VoiceAssistantButton({
         style={[
           styles.glow,
           {
-            backgroundColor: colors.glow,
+            backgroundColor: stateColors.glow,
             opacity: glowAnim,
           },
         ]}
@@ -129,7 +131,7 @@ export function VoiceAssistantButton({
       <TouchableOpacity
         style={[
           styles.button,
-          { backgroundColor: colors.bg },
+          { backgroundColor: stateColors.bg },
           isActive && styles.buttonActive,
           disabled && styles.buttonDisabled,
         ]}
@@ -139,9 +141,10 @@ export function VoiceAssistantButton({
       >
         {/* Microphone Icon */}
         <View style={styles.iconContainer}>
-          <MicrophoneIcon
-            color={isActive ? '#FFFFFF' : '#888888'}
+          <Ionicons
+            name="mic"
             size={28}
+            color={isActive ? colors.textPrimary : colors.gray}
           />
         </View>
 
@@ -153,52 +156,6 @@ export function VoiceAssistantButton({
         )}
       </TouchableOpacity>
     </Animated.View>
-  );
-}
-
-// Simple Microphone Icon
-function MicrophoneIcon({ color, size }: { color: string; size: number }) {
-  return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      {/* Mic body */}
-      <View
-        style={{
-          width: size * 0.4,
-          height: size * 0.55,
-          backgroundColor: color,
-          borderRadius: size * 0.2,
-        }}
-      />
-      {/* Mic stand */}
-      <View
-        style={{
-          width: size * 0.6,
-          height: size * 0.15,
-          borderLeftWidth: 2,
-          borderRightWidth: 2,
-          borderBottomWidth: 2,
-          borderColor: color,
-          borderBottomLeftRadius: size * 0.3,
-          borderBottomRightRadius: size * 0.3,
-          marginTop: -size * 0.1,
-        }}
-      />
-      {/* Base */}
-      <View
-        style={{
-          width: 2,
-          height: size * 0.15,
-          backgroundColor: color,
-        }}
-      />
-      <View
-        style={{
-          width: size * 0.35,
-          height: 2,
-          backgroundColor: color,
-        }}
-      />
-    </View>
   );
 }
 
@@ -285,10 +242,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
     borderWidth: 2,
-    borderColor: '#2A2A2A',
+    borderColor: colors.border,
   },
   buttonActive: {
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: opacity.white30,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -311,6 +268,6 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: colors.purple,
   },
 });

@@ -1,7 +1,10 @@
 /**
  * Storage Service
  *
- * Handles all AsyncStorage operations for user progress, settings, and session data.
+ * Handles all storage operations for user progress, settings, and session data.
+ * Uses a tiered storage approach:
+ * - AsyncStorage: Fast access to hot data (settings, recent sessions)
+ * - SQLite: Full session history archive (unlimited storage)
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,6 +18,7 @@ import {
   DailyTip,
 } from '../types/userProgress';
 import { NOTE_FREQUENCIES } from '../data/exercises';
+import { storageManager } from '../core/storage/storageManager';
 
 // Storage keys
 const KEYS = {
@@ -104,18 +108,14 @@ export async function saveUserProgress(progress: UserProgress): Promise<void> {
 
 /**
  * Save a new session and update progress
+ * Uses tiered storage: session saved to both SQLite (archive) and AsyncStorage (hot cache)
  */
 export async function saveSession(session: SessionRecord): Promise<void> {
   try {
-    const progress = await getUserProgress();
+    let progress = await getUserProgress();
 
-    // Add session to history
-    progress.sessionHistory.unshift(session); // Add to beginning
-
-    // Keep only last 100 sessions
-    if (progress.sessionHistory.length > 100) {
-      progress.sessionHistory = progress.sessionHistory.slice(0, 100);
-    }
+    // Save to tiered storage (SQLite + hot cache)
+    progress = await storageManager.saveSession(session, progress);
 
     // Update total sessions and practice time
     progress.totalSessions++;
@@ -482,4 +482,72 @@ export async function importData(jsonString: string): Promise<void> {
     console.error('Failed to import data:', error);
     throw error;
   }
+}
+
+// ========== STORAGE INITIALIZATION ==========
+
+let isInitialized = false;
+
+/**
+ * Initialize storage system
+ * Should be called once on app startup
+ * Handles migration from legacy AsyncStorage-only storage to tiered storage
+ */
+export async function initializeStorage(): Promise<void> {
+  if (isInitialized) {
+    return;
+  }
+
+  console.log('[Storage] Initializing storage system...');
+  await storageManager.initializeStorage();
+  isInitialized = true;
+  console.log('[Storage] Storage system ready');
+}
+
+// ========== ARCHIVE ACCESS ==========
+
+/**
+ * Get all sessions from archive (paginated)
+ * Use this for full history access, not for recent sessions
+ */
+export async function getAllSessionsFromArchive(
+  limit: number = 100,
+  offset: number = 0
+): Promise<SessionRecord[]> {
+  return storageManager.getAllSessions(limit, offset);
+}
+
+/**
+ * Get total session count from archive
+ */
+export async function getTotalSessionCount(): Promise<number> {
+  return storageManager.getTotalSessionCount();
+}
+
+/**
+ * Get sessions by date range
+ */
+export async function getSessionsByDateRange(
+  startDate: string,
+  endDate: string
+): Promise<SessionRecord[]> {
+  return storageManager.getSessionsByDateRange(startDate, endDate);
+}
+
+/**
+ * Get a specific session by ID
+ */
+export async function getSessionById(sessionId: string): Promise<SessionRecord | null> {
+  const progress = await getUserProgress();
+  return storageManager.getSessionById(sessionId, progress);
+}
+
+/**
+ * Get sessions for a specific exercise
+ */
+export async function getSessionsForExercise(
+  exerciseId: string,
+  limit: number = 20
+): Promise<SessionRecord[]> {
+  return storageManager.getSessionsForExercise(exerciseId, limit);
 }

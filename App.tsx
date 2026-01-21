@@ -13,6 +13,7 @@ import { VoiceAssistantButton } from './src/components/VoiceAssistantButton';
 import { VoiceAssistantOverlay } from './src/components/VoiceAssistantOverlay';
 import { appController } from './src/services/appController';
 import { loadFeatureFlags, isVoiceAssistantEnabled } from './src/config/featureFlags';
+import { initializeStorage } from './src/services/storage';
 
 // Dark theme for navigation
 const DarkTheme = {
@@ -123,11 +124,18 @@ function AppContent() {
   const { hasCompletedOnboarding, isLoading, completeOnboarding } = useOnboardingStatus();
   const [voiceAssistantEnabled, setVoiceAssistantEnabled] = useState(false);
 
-  // Load feature flags on mount
+  // Initialize app on mount
   useEffect(() => {
-    loadFeatureFlags().then(() => {
+    async function initialize() {
+      // Initialize storage system (handles SQLite migration)
+      await initializeStorage();
+
+      // Load feature flags
+      await loadFeatureFlags();
       setVoiceAssistantEnabled(isVoiceAssistantEnabled());
-    });
+    }
+
+    initialize();
   }, []);
 
   if (isLoading) {

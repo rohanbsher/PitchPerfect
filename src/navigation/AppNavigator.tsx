@@ -7,8 +7,10 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Text, View, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../theme';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 
 import { HomeScreen } from '../screens/HomeScreen';
@@ -45,19 +47,26 @@ export type RootStackParamList = {
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// Icon mapping for tabs
+type TabIconName = 'Practice' | 'Progress' | 'Settings';
+const tabIcons: Record<TabIconName, { outline: keyof typeof Ionicons.glyphMap; filled: keyof typeof Ionicons.glyphMap }> = {
+  Practice: { outline: 'mic-outline', filled: 'mic' },
+  Progress: { outline: 'stats-chart-outline', filled: 'stats-chart' },
+  Settings: { outline: 'settings-outline', filled: 'settings' },
+};
+
 // Tab bar icon component
-const TabIcon = ({ name, focused }: { name: string; focused: boolean }) => {
-  const icons: Record<string, string> = {
-    Practice: '🎵',
-    Progress: '📊',
-    Settings: '⚙️',
-  };
+const TabIcon = ({ name, focused }: { name: TabIconName; focused: boolean }) => {
+  const iconConfig = tabIcons[name];
+  const iconName = focused ? iconConfig.filled : iconConfig.outline;
 
   return (
     <View style={styles.iconContainer}>
-      <Text style={[styles.icon, focused && styles.iconFocused]}>
-        {icons[name]}
-      </Text>
+      <Ionicons
+        name={iconName}
+        size={22}
+        color={focused ? colors.tabActive : colors.tabInactive}
+      />
     </View>
   );
 };
@@ -72,15 +81,15 @@ function TabNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#0A0A0A',
-          borderTopColor: '#1A1A1A',
+          backgroundColor: colors.background,
+          borderTopColor: colors.card,
           borderTopWidth: 1,
           height: 60 + insets.bottom,
           paddingTop: 8,
           paddingBottom: insets.bottom + 4,
         },
-        tabBarActiveTintColor: '#10B981',
-        tabBarInactiveTintColor: 'rgba(255,255,255,0.5)',
+        tabBarActiveTintColor: colors.tabActive,
+        tabBarInactiveTintColor: colors.tabInactive,
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
@@ -142,12 +151,5 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  icon: {
-    fontSize: 20,
-    opacity: 0.6,
-  },
-  iconFocused: {
-    opacity: 1,
   },
 });

@@ -18,6 +18,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CustomSlider } from '../components/CustomSlider';
 import { useUserSettings } from '../hooks/useStorage';
 import { clearAllData } from '../services/storage';
+import { colors } from '../theme';
+import { SkeletonLoader } from '../components/SkeletonLoader';
 
 export function SettingsScreen() {
   const { settings, isLoading, update } = useUserSettings();
@@ -47,9 +49,19 @@ export function SettingsScreen() {
   if (isLoading || !settings) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.title}>Settings</Text>
+          <SkeletonLoader width="60%" height={20} style={{ marginBottom: 12 }} />
+          <SkeletonLoader height={120} style={{ marginBottom: 24 }} />
+          <SkeletonLoader width="60%" height={20} style={{ marginBottom: 12 }} />
+          <SkeletonLoader height={200} style={{ marginBottom: 24 }} />
+          <SkeletonLoader width="60%" height={20} style={{ marginBottom: 12 }} />
+          <SkeletonLoader height={280} />
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -77,7 +89,7 @@ export function SettingsScreen() {
             <Switch
               value={settings.showNoteLabels}
               onValueChange={(value) => update({ showNoteLabels: value })}
-              trackColor={{ false: '#3A3A3A', true: '#10B981' }}
+              trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -105,9 +117,9 @@ export function SettingsScreen() {
               step={5}
               value={settings.pianoVolume}
               onValueChange={(value) => update({ pianoVolume: value })}
-              minimumTrackTintColor="#10B981"
-              maximumTrackTintColor="#3A3A3A"
-              thumbTintColor="#FFFFFF"
+              minimumTrackTintColor={colors.primary}
+              maximumTrackTintColor={colors.border}
+              thumbTintColor={colors.textPrimary}
             />
           </View>
 
@@ -131,9 +143,9 @@ export function SettingsScreen() {
               step={5}
               value={settings.voiceVolume}
               onValueChange={(value) => update({ voiceVolume: value })}
-              minimumTrackTintColor="#10B981"
-              maximumTrackTintColor="#3A3A3A"
-              thumbTintColor="#FFFFFF"
+              minimumTrackTintColor={colors.primary}
+              maximumTrackTintColor={colors.border}
+              thumbTintColor={colors.textPrimary}
             />
           </View>
         </View>
@@ -152,8 +164,8 @@ export function SettingsScreen() {
             <Switch
               value={settings.voiceCoachEnabled}
               onValueChange={(value) => update({ voiceCoachEnabled: value })}
-              trackColor={{ false: '#3A3A3A', true: '#10B981' }}
-              thumbTintColor="#FFFFFF"
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbTintColor={colors.textPrimary}
             />
           </View>
 
@@ -177,9 +189,9 @@ export function SettingsScreen() {
               step={0.1}
               value={settings.voiceCoachSpeed}
               onValueChange={(value) => update({ voiceCoachSpeed: value })}
-              minimumTrackTintColor="#10B981"
-              maximumTrackTintColor="#3A3A3A"
-              thumbTintColor="#FFFFFF"
+              minimumTrackTintColor={colors.primary}
+              maximumTrackTintColor={colors.border}
+              thumbTintColor={colors.textPrimary}
             />
           </View>
 
@@ -203,9 +215,9 @@ export function SettingsScreen() {
               step={0.1}
               value={settings.voiceCoachPitch}
               onValueChange={(value) => update({ voiceCoachPitch: value })}
-              minimumTrackTintColor="#10B981"
-              maximumTrackTintColor="#3A3A3A"
-              thumbTintColor="#FFFFFF"
+              minimumTrackTintColor={colors.primary}
+              maximumTrackTintColor={colors.border}
+              thumbTintColor={colors.textPrimary}
             />
           </View>
         </View>
@@ -246,7 +258,7 @@ export function SettingsScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Made with 🎵 for singers everywhere
+            Made for <Text style={styles.footerAccent}>singers</Text> everywhere
           </Text>
           <Text style={styles.footerSubtext}>
             PitchPerfect - Train Your Voice
@@ -260,16 +272,7 @@ export function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 16,
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -281,24 +284,24 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.5)',
+    color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 12,
     marginTop: 8,
   },
   section: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.card,
     borderRadius: 12,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: colors.border,
     overflow: 'hidden',
   },
   settingRow: {
@@ -312,18 +315,18 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   settingDescription: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
+    color: colors.textMuted,
   },
   settingButton: {
     padding: 16,
   },
   dangerText: {
-    color: '#EF4444',
+    color: colors.error,
   },
   sliderContainer: {
     paddingHorizontal: 16,
@@ -335,14 +338,14 @@ const styles = StyleSheet.create({
   },
   volumeValue: {
     fontSize: 16,
-    color: '#10B981',
+    color: colors.primary,
     fontWeight: '600',
     minWidth: 50,
     textAlign: 'right',
   },
   divider: {
     height: 1,
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.border,
     marginHorizontal: 16,
   },
   aboutRow: {
@@ -353,11 +356,11 @@ const styles = StyleSheet.create({
   },
   aboutLabel: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   aboutValue: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.5)',
+    color: colors.textMuted,
   },
   footer: {
     alignItems: 'center',
@@ -365,8 +368,12 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.5)',
+    color: colors.textMuted,
     marginBottom: 4,
+  },
+  footerAccent: {
+    color: colors.primary,
+    fontWeight: '600',
   },
   footerSubtext: {
     fontSize: 12,

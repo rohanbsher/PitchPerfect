@@ -14,6 +14,7 @@ import Animated, {
   runOnJS,
   withSpring,
 } from 'react-native-reanimated';
+import { colors } from '../theme';
 
 interface CustomSliderProps {
   value: number;
@@ -36,9 +37,9 @@ export function CustomSlider({
   maximumValue,
   step = 1,
   onValueChange,
-  minimumTrackTintColor = '#10B981',
-  maximumTrackTintColor = '#3A3A3A',
-  thumbTintColor = '#FFFFFF',
+  minimumTrackTintColor = colors.primary,
+  maximumTrackTintColor = colors.sliderTrack,
+  thumbTintColor = colors.textPrimary,
   style,
 }: CustomSliderProps) {
   const trackWidth = useSharedValue(0);

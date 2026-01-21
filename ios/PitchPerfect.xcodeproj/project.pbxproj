@@ -8,30 +8,26 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		13DE4EB11F5059C3C47CA8ED /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E521AEE0D3288FB14825CA0F /* PrivacyInfo.xcprivacy */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		43D26CD6BFE6368ADEA0A048 /* PitchDetectorModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6CE7F1F6D4EEF721CC0BEB /* PitchDetectorModule.swift */; };
-		7149AA4F23A1EEE21A75DC41 /* PitchDetectorBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 94D741963C9429BED6151062 /* PitchDetectorBridge.m */; };
-		95A87FEB5DE6869CD8004B5B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 974760E32D9BEABA31016A9A /* PrivacyInfo.xcprivacy */; };
-		ABDEE1FFC18AEF16808F50BE /* libPods-PitchPerfect.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5812EDE8D77907760EB708DE /* libPods-PitchPerfect.a */; };
+		7C83DBD8EBEBA6E21FED5352 /* libPods-PitchPerfect.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3D1A06A47A21B7402464940D /* libPods-PitchPerfect.a */; };
+		87AAD0CF3520C92A0BAF11F7 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1FB363E98242BD5BFE2835 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
-		FE7BFCF475C5C8DF7B19D10E /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A0F873AB20740B62B07215C /* ExpoModulesProvider.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		0BF11D4AA09DB44BEA61DAC2 /* Pods-PitchPerfect.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PitchPerfect.debug.xcconfig"; path = "Target Support Files/Pods-PitchPerfect/Pods-PitchPerfect.debug.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* PitchPerfect.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PitchPerfect.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = PitchPerfect/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = PitchPerfect/Info.plist; sourceTree = "<group>"; };
-		3CE788598BC337788CA973DF /* Pods-PitchPerfect.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PitchPerfect.release.xcconfig"; path = "Target Support Files/Pods-PitchPerfect/Pods-PitchPerfect.release.xcconfig"; sourceTree = "<group>"; };
-		5812EDE8D77907760EB708DE /* libPods-PitchPerfect.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PitchPerfect.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		5B6CE7F1F6D4EEF721CC0BEB /* PitchDetectorModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PitchDetectorModule.swift; path = PitchPerfect/PitchDetectorModule.swift; sourceTree = "<group>"; };
-		6A0F873AB20740B62B07215C /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-PitchPerfect/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		94D741963C9429BED6151062 /* PitchDetectorBridge.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = PitchDetectorBridge.m; path = PitchPerfect/PitchDetectorBridge.m; sourceTree = "<group>"; };
-		974760E32D9BEABA31016A9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = PitchPerfect/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		3D1A06A47A21B7402464940D /* libPods-PitchPerfect.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PitchPerfect.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		880F545E83A67F6B01E2306E /* Pods-PitchPerfect.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PitchPerfect.debug.xcconfig"; path = "Target Support Files/Pods-PitchPerfect/Pods-PitchPerfect.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = PitchPerfect/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		E521AEE0D3288FB14825CA0F /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = PitchPerfect/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		E914A6C581D8B0EF4E1E2288 /* Pods-PitchPerfect.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PitchPerfect.release.xcconfig"; path = "Target Support Files/Pods-PitchPerfect/Pods-PitchPerfect.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		EE1FB363E98242BD5BFE2835 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-PitchPerfect/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = PitchPerfect/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* PitchPerfect-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "PitchPerfect-Bridging-Header.h"; path = "PitchPerfect/PitchPerfect-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -41,13 +37,21 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ABDEE1FFC18AEF16808F50BE /* libPods-PitchPerfect.a in Frameworks */,
+				7C83DBD8EBEBA6E21FED5352 /* libPods-PitchPerfect.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0D0C3675280F2E6A6EEC18CF /* PitchPerfect */ = {
+			isa = PBXGroup;
+			children = (
+				EE1FB363E98242BD5BFE2835 /* ExpoModulesProvider.swift */,
+			);
+			name = PitchPerfect;
+			sourceTree = "<group>";
+		};
 		13B07FAE1A68108700A75B9A /* PitchPerfect */ = {
 			isa = PBXGroup;
 			children = (
@@ -57,9 +61,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				974760E32D9BEABA31016A9A /* PrivacyInfo.xcprivacy */,
-				5B6CE7F1F6D4EEF721CC0BEB /* PitchDetectorModule.swift */,
-				94D741963C9429BED6151062 /* PitchDetectorBridge.m */,
+				E521AEE0D3288FB14825CA0F /* PrivacyInfo.xcprivacy */,
 			);
 			name = PitchPerfect;
 			sourceTree = "<group>";
@@ -68,18 +70,9 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				5812EDE8D77907760EB708DE /* libPods-PitchPerfect.a */,
+				3D1A06A47A21B7402464940D /* libPods-PitchPerfect.a */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		5921328376DF6F6A05CF4D01 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				0BF11D4AA09DB44BEA61DAC2 /* Pods-PitchPerfect.debug.xcconfig */,
-				3CE788598BC337788CA973DF /* Pods-PitchPerfect.release.xcconfig */,
-			);
-			path = Pods;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -96,8 +89,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				5921328376DF6F6A05CF4D01 /* Pods */,
-				F88C1837D34285460685E264 /* ExpoModulesProviders */,
+				849ADC84162A8541518CB317 /* Pods */,
+				9B30A642AB1D7C8E390EEC15 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -112,6 +105,24 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		849ADC84162A8541518CB317 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				880F545E83A67F6B01E2306E /* Pods-PitchPerfect.debug.xcconfig */,
+				E914A6C581D8B0EF4E1E2288 /* Pods-PitchPerfect.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		9B30A642AB1D7C8E390EEC15 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				0D0C3675280F2E6A6EEC18CF /* PitchPerfect */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -121,22 +132,6 @@
 			path = PitchPerfect/Supporting;
 			sourceTree = "<group>";
 		};
-		DEB8900C80D07739D953F836 /* PitchPerfect */ = {
-			isa = PBXGroup;
-			children = (
-				6A0F873AB20740B62B07215C /* ExpoModulesProvider.swift */,
-			);
-			name = PitchPerfect;
-			sourceTree = "<group>";
-		};
-		F88C1837D34285460685E264 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				DEB8900C80D07739D953F836 /* PitchPerfect */,
-			);
-			name = ExpoModulesProviders;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -144,14 +139,14 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "PitchPerfect" */;
 			buildPhases = (
-				9BD488D7F59D79621598BCB0 /* [CP] Check Pods Manifest.lock */,
-				E042805266D5B3C4987676CC /* [Expo] Configure project */,
+				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
+				6521F6A3869E761D007E9103 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				8CE0AE5B4F10017FE9AEAE77 /* [CP] Embed Pods Frameworks */,
-				39162C3FA9FA971D2B7CB8BF /* [CP] Copy Pods Resources */,
+				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
+				01D335BA50A37502C4543059 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -172,6 +167,8 @@
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1250;
+						DevelopmentTeam = "NYMNM2UCQ8";
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -201,7 +198,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				95A87FEB5DE6869CD8004B5B /* PrivacyInfo.xcprivacy in Resources */,
+				13DE4EB11F5059C3C47CA8ED /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -225,43 +222,7 @@
 			shellPath = /bin/sh;
 			shellScript = "if [[ -f \"$PODS_ROOT/../.xcode.env\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env\"\nfi\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n# The project root by default is one level up from the ios directory\nexport PROJECT_ROOT=\"$PROJECT_DIR\"/..\n\nif [[ \"$CONFIGURATION\" = *Debug* ]]; then\n  export SKIP_BUNDLING=1\nfi\nif [[ -z \"$ENTRY_FILE\" ]]; then\n  # Set the entry JS file using the bundler's entry resolution.\n  export ENTRY_FILE=\"$(\"$NODE_BINARY\" -e \"require('expo/scripts/resolveAppEntry')\" \"$PROJECT_ROOT\" ios absolute | tail -n 1)\"\nfi\n\nif [[ -z \"$CLI_PATH\" ]]; then\n  # Use Expo CLI\n  export CLI_PATH=\"$(\"$NODE_BINARY\" --print \"require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })\")\"\nfi\nif [[ -z \"$BUNDLE_COMMAND\" ]]; then\n  # Default Expo CLI command for bundling\n  export BUNDLE_COMMAND=\"export:embed\"\nfi\n\n# Source .xcode.env.updates if it exists to allow\n# SKIP_BUNDLING to be unset if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.updates\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.updates\"\nfi\n# Source local changes to allow overrides\n# if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n`\"$NODE_BINARY\" --print \"require('path').dirname(require.resolve('react-native/package.json')) + '/scripts/react-native-xcode.sh'\"`\n\n";
 		};
-		39162C3FA9FA971D2B7CB8BF /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-PitchPerfect/Pods-PitchPerfect-resources.sh",
-				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/ExpoConstants_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoFileSystem/ExpoFileSystem_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/RNCAsyncStorage/RNCAsyncStorage_resources.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/React-Core_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/expo-dev-launcher/EXDevLauncher.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/expo-dev-menu/EXDevMenu.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/lottie-ios/LottiePrivacyInfo.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/lottie-react-native/Lottie_React_Native_Privacy.bundle",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXConstants.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoConstants_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoFileSystem_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNCAsyncStorage_resources.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-Core_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXDevLauncher.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXDevMenu.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/LottiePrivacyInfo.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Lottie_React_Native_Privacy.bundle",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PitchPerfect/Pods-PitchPerfect-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		8CE0AE5B4F10017FE9AEAE77 /* [CP] Embed Pods Frameworks */ = {
+		01D335BA50A37502C4543059 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -283,7 +244,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PitchPerfect/Pods-PitchPerfect-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		9BD488D7F59D79621598BCB0 /* [CP] Check Pods Manifest.lock */ = {
+		08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -305,7 +266,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		E042805266D5B3C4987676CC /* [Expo] Configure project */ = {
+		6521F6A3869E761D007E9103 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -329,6 +290,38 @@
 			shellPath = /bin/sh;
 			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-PitchPerfect/expo-configure-project.sh\"\n";
 		};
+		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-PitchPerfect/Pods-PitchPerfect-resources.sh",
+				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/ExpoConstants_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoFileSystem/ExpoFileSystem_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/RNCAsyncStorage/RNCAsyncStorage_resources.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/React-Core_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/lottie-ios/LottiePrivacyInfo.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/lottie-react-native/Lottie_React_Native_Privacy.bundle",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXConstants.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoConstants_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoFileSystem_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNCAsyncStorage_resources.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-Core_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/LottiePrivacyInfo.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Lottie_React_Native_Privacy.bundle",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PitchPerfect/Pods-PitchPerfect-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -337,9 +330,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				FE7BFCF475C5C8DF7B19D10E /* ExpoModulesProvider.swift in Sources */,
-				43D26CD6BFE6368ADEA0A048 /* PitchDetectorModule.swift in Sources */,
-				7149AA4F23A1EEE21A75DC41 /* PitchDetectorBridge.m in Sources */,
+				87AAD0CF3520C92A0BAF11F7 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -348,13 +339,12 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 0BF11D4AA09DB44BEA61DAC2 /* Pods-PitchPerfect.debug.xcconfig */;
+			baseConfigurationReference = 880F545E83A67F6B01E2306E /* Pods-PitchPerfect.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = PitchPerfect/PitchPerfect.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = NYMNM2UCQ8;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -373,25 +363,27 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.beatsandbytes.pitchperfect;
+				PRODUCT_BUNDLE_IDENTIFIER = com.beatsnbytes.pitchperfect;
 				PRODUCT_NAME = PitchPerfect;
 				SWIFT_OBJC_BRIDGING_HEADER = "PitchPerfect/PitchPerfect-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
+				DEVELOPMENT_TEAM = "NYMNM2UCQ8";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 			};
 			name = Debug;
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 3CE788598BC337788CA973DF /* Pods-PitchPerfect.release.xcconfig */;
+			baseConfigurationReference = E914A6C581D8B0EF4E1E2288 /* Pods-PitchPerfect.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = PitchPerfect/PitchPerfect.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = NYMNM2UCQ8;
 				INFOPLIST_FILE = PitchPerfect/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -405,12 +397,15 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.beatsandbytes.pitchperfect;
+				PRODUCT_BUNDLE_IDENTIFIER = com.beatsnbytes.pitchperfect;
 				PRODUCT_NAME = PitchPerfect;
 				SWIFT_OBJC_BRIDGING_HEADER = "PitchPerfect/PitchPerfect-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
+				DEVELOPMENT_TEAM = "NYMNM2UCQ8";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 			};
 			name = Release;
 		};

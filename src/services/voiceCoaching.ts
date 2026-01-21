@@ -229,7 +229,8 @@ export async function speak(text: string, preferences: VoicePreferences = DEFAUL
 
   try {
     // Try ElevenLabs first for natural voice
-    if (ElevenLabsTTS.isAvailable()) {
+    const elevenLabsAvailable = await ElevenLabsTTS.isAvailable();
+    if (elevenLabsAvailable) {
       console.log('[Voice] Using ElevenLabs for:', text.substring(0, 50) + '...');
 
       const success = await ElevenLabsTTS.speak(text, {
