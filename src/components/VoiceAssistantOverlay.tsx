@@ -17,8 +17,10 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { VoiceAssistantState, ConversationTurn } from '../services/voiceAssistant';
+import { colors, borderRadius, opacity } from '../theme';
 
 interface VoiceAssistantOverlayProps {
   visible: boolean;
@@ -110,41 +112,42 @@ export function VoiceAssistantOverlay({
   }, [state]);
 
   // Get status text and colors
-  const getStatusInfo = () => {
+  type IoniconsName = keyof typeof Ionicons.glyphMap;
+  const getStatusInfo = (): { icon: IoniconsName; text: string; color: string; subtext: string } => {
     switch (state) {
       case 'listening':
         return {
-          icon: '🎙️',
+          icon: 'mic',
           text: 'Listening...',
-          color: '#10B981',
+          color: colors.voiceListening,
           subtext: 'Speak now',
         };
       case 'processing':
         return {
-          icon: '🤔',
+          icon: 'ellipsis-horizontal',
           text: 'Processing...',
-          color: '#8B5CF6',
+          color: colors.voiceProcessing,
           subtext: 'Thinking',
         };
       case 'speaking':
         return {
-          icon: '🗣️',
+          icon: 'volume-high',
           text: 'Speaking',
-          color: '#3B82F6',
+          color: colors.voiceSpeaking,
           subtext: '',
         };
       case 'error':
         return {
-          icon: '⚠️',
+          icon: 'warning',
           text: 'Error',
-          color: '#EF4444',
+          color: colors.voiceError,
           subtext: 'Try again',
         };
       default:
         return {
-          icon: '🎤',
+          icon: 'mic-outline',
           text: 'Ready',
-          color: '#888888',
+          color: colors.gray,
           subtext: 'Tap to speak',
         };
     }
@@ -187,7 +190,7 @@ export function VoiceAssistantOverlay({
                   },
                 ]}
               >
-                <Text style={styles.statusIcon}>{statusInfo.icon}</Text>
+                <Ionicons name={statusInfo.icon} size={36} color={statusInfo.color} />
               </Animated.View>
 
               <Text style={[styles.statusText, { color: statusInfo.color }]}>
@@ -332,9 +335,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    backgroundColor: 'rgba(20, 20, 20, 0.95)',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: opacity.overlayContent,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
     paddingTop: 32,
     paddingBottom: 48,
     paddingHorizontal: 24,
@@ -356,30 +359,30 @@ const styles = StyleSheet.create({
   chatBubble: {
     maxWidth: '80%',
     padding: 12,
-    borderRadius: 16,
+    borderRadius: borderRadius.lg,
     marginVertical: 4,
   },
   userBubble: {
     alignSelf: 'flex-end',
-    backgroundColor: '#3B82F6',
-    borderBottomRightRadius: 4,
+    backgroundColor: colors.blue,
+    borderBottomRightRadius: borderRadius.xs,
   },
   assistantBubble: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
-    borderBottomLeftRadius: 4,
+    backgroundColor: opacity.purple20,
+    borderBottomLeftRadius: borderRadius.xs,
     borderLeftWidth: 2,
-    borderLeftColor: '#8B5CF6',
+    borderLeftColor: colors.purple,
   },
   chatBubbleText: {
     fontSize: 15,
     lineHeight: 22,
   },
   userBubbleText: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   assistantBubbleText: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   statusContainer: {
     alignItems: 'center',
@@ -389,14 +392,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: opacity.white10,
     borderWidth: 3,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-  },
-  statusIcon: {
-    fontSize: 36,
   },
   statusText: {
     fontSize: 24,
@@ -405,37 +405,37 @@ const styles = StyleSheet.create({
   },
   statusSubtext: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: opacity.white50,
   },
   transcriptContainer: {
     width: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
+    backgroundColor: opacity.white5,
+    borderRadius: borderRadius.md,
     padding: 16,
     marginBottom: 16,
   },
   transcriptLabel: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: opacity.white50,
     marginBottom: 8,
   },
   transcriptText: {
     fontSize: 18,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontStyle: 'italic',
   },
   responseContainer: {
     width: '100%',
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    borderRadius: 12,
+    backgroundColor: opacity.purple10,
+    borderRadius: borderRadius.md,
     padding: 16,
     marginBottom: 16,
     borderLeftWidth: 3,
-    borderLeftColor: '#8B5CF6',
+    borderLeftColor: colors.purple,
   },
   responseText: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     lineHeight: 24,
   },
   waveformContainer: {
@@ -459,6 +459,6 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: opacity.white50,
   },
 });

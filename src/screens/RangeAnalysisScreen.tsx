@@ -19,6 +19,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -29,6 +30,7 @@ import { PianoKeyboard } from '../components/PianoKeyboard';
 import { analyzeVocalRange, RangeAnalysisResult } from '../services/rangeAnalysis';
 import { generateRangeAnalysisReport } from '../../services/claudeAI';
 import { SessionRecord } from '../types/userProgress';
+import { colors, borderRadius, opacity } from '../theme';
 
 type NavigationProp = BottomTabNavigationProp<TabParamList>;
 
@@ -161,7 +163,7 @@ export function RangeAnalysisScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#10B981" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -177,7 +179,9 @@ export function RangeAnalysisScreen() {
           </View>
 
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🎹</Text>
+            <View style={styles.emptyIconContainer}>
+              <Ionicons name="musical-notes-outline" size={48} color={colors.primary} />
+            </View>
             <Text style={styles.emptyTitle}>Not Enough Data</Text>
             <Text style={styles.emptySubtitle}>
               Complete at least 3 practice sessions to see your vocal range analysis.
@@ -218,19 +222,19 @@ export function RangeAnalysisScreen() {
           />
           <View style={styles.legend}>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+              <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
               <Text style={styles.legendText}>Comfortable (70%+)</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
+              <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
               <Text style={styles.legendText}>Extended (50-70%)</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+              <View style={[styles.legendDot, { backgroundColor: colors.error }]} />
               <Text style={styles.legendText}>Struggling (&lt;50%)</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#3A3A3A' }]} />
+              <View style={[styles.legendDot, { backgroundColor: colors.sliderTrack }]} />
               <Text style={styles.legendText}>Untested</Text>
             </View>
           </View>
@@ -306,7 +310,10 @@ export function RangeAnalysisScreen() {
         {/* AI Report */}
         {aiReport && (
           <Animated.View entering={FadeInDown.delay(400)} style={styles.aiReportCard}>
-            <Text style={styles.aiReportTitle}>🎯 AI Vocal Coach Analysis</Text>
+            <View style={styles.aiReportHeader}>
+              <Ionicons name="radio-button-on" size={20} color={colors.purple} />
+              <Text style={styles.aiReportTitle}>AI Vocal Coach Analysis</Text>
+            </View>
 
             <View style={styles.reportSection}>
               <Text style={styles.reportSectionTitle}>Range Assessment</Text>
@@ -353,7 +360,9 @@ export function RangeAnalysisScreen() {
         {/* AI Report Error */}
         {aiReportError && !loadingAI && (
           <Animated.View entering={FadeInDown.delay(400)} style={styles.reportErrorCard}>
-            <Text style={styles.reportErrorIcon}>ℹ️</Text>
+            <View style={styles.reportErrorIconContainer}>
+              <Ionicons name="information-circle" size={32} color={colors.error} />
+            </View>
             <Text style={styles.reportErrorTitle}>AI Analysis Unavailable</Text>
             <Text style={styles.reportErrorMessage}>{aiReportError}</Text>
             <TouchableOpacity
@@ -368,14 +377,17 @@ export function RangeAnalysisScreen() {
 
         {loadingAI && (
           <View style={styles.aiLoadingCard}>
-            <ActivityIndicator size="small" color="#8B5CF6" />
+            <ActivityIndicator size="small" color={colors.purple} />
             <Text style={styles.aiLoadingText}>Generating AI analysis...</Text>
           </View>
         )}
 
         {/* Range Test Button */}
         <TouchableOpacity style={styles.rangeTestButton} onPress={handleStartRangeTest}>
-          <Text style={styles.rangeTestButtonText}>📊 Check Full Range</Text>
+          <View style={styles.rangeTestButtonContent}>
+            <Ionicons name="stats-chart" size={20} color={colors.textPrimary} />
+            <Text style={styles.rangeTestButtonText}>Check Full Range</Text>
+          </View>
           <Text style={styles.rangeTestButtonSubtext}>
             Run systematic range test (C3-C6)
           </Text>
@@ -388,7 +400,7 @@ export function RangeAnalysisScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -408,21 +420,21 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 8,
   },
   rangeDisplay: {
     fontSize: 18,
-    color: '#10B981',
+    color: colors.primary,
     fontWeight: '600',
   },
   keyboardCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.lg,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: colors.border,
   },
   legend: {
     flexDirection: 'row',
@@ -442,7 +454,7 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
+    color: opacity.white70,
   },
   statsRow: {
     flexDirection: 'row',
@@ -451,39 +463,39 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: colors.border,
   },
   statLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
+    color: opacity.white60,
     marginBottom: 8,
   },
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#10B981',
+    color: colors.primary,
     marginBottom: 4,
   },
   statDetail: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.5)',
+    color: opacity.white50,
   },
   weaknessCard: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 16,
+    backgroundColor: opacity.error10,
+    borderRadius: borderRadius.lg,
     borderWidth: 2,
-    borderColor: '#EF4444',
+    borderColor: colors.error,
     padding: 16,
     marginBottom: 16,
   },
   weaknessTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#EF4444',
+    color: colors.error,
     marginBottom: 12,
   },
   weaknessItem: {
@@ -492,31 +504,36 @@ const styles = StyleSheet.create({
   weaknessBand: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   weaknessNotes: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
+    color: opacity.white80,
     marginBottom: 2,
   },
   weaknessAccuracy: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
+    color: opacity.white60,
   },
   aiReportCard: {
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    borderRadius: 16,
+    backgroundColor: opacity.purple10,
+    borderRadius: borderRadius.lg,
     borderWidth: 2,
-    borderColor: '#8B5CF6',
+    borderColor: colors.purple,
     padding: 16,
+    marginBottom: 16,
+  },
+  aiReportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     marginBottom: 16,
   },
   aiReportTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#8B5CF6',
-    marginBottom: 16,
+    color: colors.purple,
   },
   reportSection: {
     marginBottom: 16,
@@ -524,23 +541,23 @@ const styles = StyleSheet.create({
   reportSectionTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 8,
   },
   reportText: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.85)',
+    color: opacity.white85,
     lineHeight: 20,
   },
   reportListItem: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.85)',
+    color: opacity.white85,
     lineHeight: 22,
     marginLeft: 8,
   },
   aiLoadingCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
@@ -550,94 +567,109 @@ const styles = StyleSheet.create({
   },
   aiLoadingText: {
     fontSize: 14,
-    color: '#8B5CF6',
+    color: colors.purple,
   },
   rangeTestButton: {
-    backgroundColor: '#8B5CF6',
-    borderRadius: 16,
+    backgroundColor: colors.purple,
+    borderRadius: borderRadius.lg,
     padding: 20,
     alignItems: 'center',
     marginBottom: 32,
   },
+  rangeTestButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   rangeTestButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
+    color: colors.textPrimary,
   },
   rangeTestButtonSubtext: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
+    color: opacity.white80,
   },
   emptyState: {
     alignItems: 'center',
     paddingVertical: 60,
   },
-  emptyEmoji: {
-    fontSize: 64,
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: opacity.primary10,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 20,
   },
   emptyTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 12,
   },
   emptySubtitle: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.6)',
+    color: opacity.white60,
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 32,
     paddingHorizontal: 20,
   },
   emptyButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 12,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
     paddingHorizontal: 32,
     paddingVertical: 16,
   },
   emptyButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   reportErrorCard: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 16,
+    backgroundColor: opacity.error10,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: '#EF4444',
+    borderColor: colors.error,
     padding: 20,
     marginBottom: 16,
     alignItems: 'center',
   },
-  reportErrorIcon: {
-    fontSize: 40,
+  reportErrorIconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: opacity.error20,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 12,
   },
   reportErrorTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#EF4444',
+    color: colors.error,
     marginBottom: 8,
     textAlign: 'center',
   },
   reportErrorMessage: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: opacity.white80,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 16,
   },
   reportRetryButton: {
-    backgroundColor: '#EF4444',
-    borderRadius: 12,
+    backgroundColor: colors.error,
+    borderRadius: borderRadius.md,
     paddingHorizontal: 24,
     paddingVertical: 10,
   },
   reportRetryText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
 });

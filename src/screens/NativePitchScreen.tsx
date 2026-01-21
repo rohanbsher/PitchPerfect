@@ -37,6 +37,7 @@ import { QuickWarmupCard } from '../components/QuickWarmupCard';
 import { ExerciseCategoryCard } from '../components/ExerciseCategoryCard';
 import { VoiceCoach } from '../services/voiceCoaching';
 import { appController } from '../services/appController';
+import { colors, borderRadius, opacity } from '../theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -58,9 +59,9 @@ const pianoSamples: Record<string, any> = {
   'C6': require('../../assets/audio/piano/C6.aiff'),
 };
 
-// Colors
-const ACCENT_COLOR = '#10B981';
-const TARGET_COLOR = '#8B5CF6'; // Purple for target pitch
+// Colors - use theme tokens
+const ACCENT_COLOR = colors.primary;
+const TARGET_COLOR = colors.purple; // Purple for target pitch
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type PracticeRouteProps = RouteProp<TabParamList, 'Practice'>;
@@ -1077,7 +1078,7 @@ export const NativePitchScreen: React.FC = () => {
       {/* Loading overlay for exercise initialization */}
       {isInitializing && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#10B981" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Preparing exercise...</Text>
         </View>
       )}
@@ -1088,7 +1089,7 @@ export const NativePitchScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: colors.background,
   },
   trackerContainer: {
     flex: 1,
@@ -1113,7 +1114,7 @@ const styles = StyleSheet.create({
   },
   noteLabelText: {
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: opacity.white70,
     textAlign: 'right',
     fontWeight: '600',
     paddingRight: 6,
@@ -1133,7 +1134,7 @@ const styles = StyleSheet.create({
   },
   indicatorBar: {
     height: 24,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     backgroundColor: ACCENT_COLOR,
     shadowColor: ACCENT_COLOR,
     shadowOffset: { width: 0, height: 0 },
@@ -1150,12 +1151,12 @@ const styles = StyleSheet.create({
   noteDisplayText: {
     fontSize: 48,
     fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: opacity.white90,
     textAlign: 'center',
   },
   errorText: {
     fontSize: 16,
-    color: '#EF4444',
+    color: colors.error,
     textAlign: 'center',
     padding: 20,
   },
@@ -1168,7 +1169,7 @@ const styles = StyleSheet.create({
   },
   targetBar: {
     height: 8,
-    borderRadius: 4,
+    borderRadius: borderRadius.xs,
     backgroundColor: TARGET_COLOR,
     opacity: 0.6,
     shadowColor: TARGET_COLOR,
@@ -1205,11 +1206,11 @@ const styles = StyleSheet.create({
   feedbackText: {
     fontSize: 18,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.8)',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    color: opacity.white80,
+    backgroundColor: opacity.overlay50,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: borderRadius.sm,
   },
   exerciseStateContainer: {
     position: 'absolute',
@@ -1234,17 +1235,17 @@ const styles = StyleSheet.create({
   listeningCountdownNumber: {
     fontSize: 120,
     fontWeight: '800',
-    color: 'rgba(16, 185, 129, 0.4)',
+    color: opacity.primary40,
     textAlign: 'center',
   },
   hearAgainButton: {
     position: 'absolute',
     bottom: 160,
     right: 20,
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    backgroundColor: opacity.purple20,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.5)',
-    borderRadius: 20,
+    borderColor: opacity.purple50,
+    borderRadius: borderRadius.xl,
     paddingHorizontal: 16,
     paddingVertical: 10,
     zIndex: 25,
@@ -1252,7 +1253,7 @@ const styles = StyleSheet.create({
   hearAgainText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: colors.purple,
   },
   progressIndicator: {
     position: 'absolute',
@@ -1263,12 +1264,12 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 13,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: opacity.white50,
   },
   progressSubtext: {
     fontSize: 11,
     fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.35)',
+    color: opacity.white35,
     marginTop: 2,
   },
   bottomBar: {
@@ -1277,18 +1278,18 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   workoutButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: colors.primary,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
   },
   workoutButtonActive: {
-    backgroundColor: '#EF4444',
+    backgroundColor: colors.error,
   },
   workoutButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   // Breathing overlay styles
   breathingOverlay: {
@@ -1299,33 +1300,33 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: opacity.overlay70,
     zIndex: 25,
   },
   breathingPhase: {
     fontSize: 32,
     fontWeight: '600',
-    color: '#10B981',
+    color: colors.primary,
     marginBottom: 20,
   },
   breathingTimer: {
     fontSize: 96,
     fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: opacity.white90,
   },
   breathingCycle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: opacity.white50,
     marginTop: 20,
   },
   skipButton: {
     marginTop: 40,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    borderRadius: 24,
+    backgroundColor: opacity.primary20,
+    borderRadius: borderRadius.xl,
     borderWidth: 1,
-    borderColor: '#10B981',
+    borderColor: colors.primary,
   },
   // Range Check overlay styles
   rangeCheckOverlay: {
@@ -1336,13 +1337,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: opacity.overlay85,
     zIndex: 30,
   },
   rangeCheckTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#10B981',
+    color: colors.primary,
     marginBottom: 24,
     textAlign: 'center',
     paddingHorizontal: 20,
@@ -1350,70 +1351,70 @@ const styles = StyleSheet.create({
   rangeCheckCountdown: {
     fontSize: 120,
     fontWeight: '800',
-    color: 'rgba(16, 185, 129, 0.6)',
+    color: opacity.primary60,
   },
   rangeCheckCurrentPitch: {
     fontSize: 72,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 8,
   },
   rangeCheckListeningTimer: {
     fontSize: 24,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: opacity.white50,
     marginBottom: 20,
   },
   rangeCheckDetectedNote: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 12,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: opacity.primary15,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
   },
   rangeCheckDetectedLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: opacity.white60,
     marginRight: 8,
   },
   rangeCheckDetectedValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#10B981',
+    color: colors.primary,
   },
   rangeCheckStopButton: {
     marginTop: 40,
     paddingHorizontal: 32,
     paddingVertical: 14,
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    borderRadius: 24,
+    backgroundColor: opacity.error20,
+    borderRadius: borderRadius.xl,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.5)',
+    borderColor: opacity.error50,
   },
   rangeCheckStopText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#EF4444',
+    color: colors.error,
   },
   skipButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10B981',
+    color: colors.primary,
     textAlign: 'center',
   },
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: opacity.overlay50,
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1A1A1A',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: colors.card,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
     paddingHorizontal: 20,
     paddingBottom: 40,
     paddingTop: 12,
@@ -1421,33 +1422,33 @@ const styles = StyleSheet.create({
   modalHandle: {
     width: 36,
     height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 2,
+    backgroundColor: opacity.white30,
+    borderRadius: borderRadius.xs,
     alignSelf: 'center',
     marginBottom: 20,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: opacity.white90,
     marginBottom: 16,
   },
   workoutOption: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
+    backgroundColor: opacity.white5,
+    borderRadius: borderRadius.md,
     padding: 20,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: opacity.white10,
   },
   workoutOptionRecommended: {
-    borderColor: 'rgba(16, 185, 129, 0.4)',
-    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+    borderColor: opacity.primary40,
+    backgroundColor: opacity.primary5,
   },
   breathingOption: {
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    backgroundColor: opacity.primary8,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.25)',
+    borderColor: opacity.primary25,
     marginTop: 8,
   },
   workoutHeader: {
@@ -1459,31 +1460,31 @@ const styles = StyleSheet.create({
   workoutName: {
     fontSize: 20,
     fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.95)',
+    color: opacity.white95,
   },
   workoutDuration: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#10B981',
+    color: colors.primary,
   },
   workoutDetail: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: opacity.white70,
     marginBottom: 6,
     lineHeight: 20,
   },
   recommendedBadge: {
-    backgroundColor: '#10B981',
+    backgroundColor: colors.primary,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: borderRadius.sm,
     alignSelf: 'flex-start',
     marginTop: 8,
   },
   recommendedText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -1495,7 +1496,7 @@ const styles = StyleSheet.create({
   cancelText: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: opacity.white50,
   },
   // Range adaptation badge styles
   adaptationBadge: {
@@ -1503,17 +1504,17 @@ const styles = StyleSheet.create({
     top: 80,
     left: 50,
     right: 20,
-    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    backgroundColor: opacity.purple15,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.4)',
-    borderRadius: 12,
+    borderColor: opacity.purple40,
+    borderRadius: borderRadius.md,
     padding: 12,
     zIndex: 15,
   },
   adaptationTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: colors.purple,
     marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -1521,12 +1522,12 @@ const styles = StyleSheet.create({
   adaptationRange: {
     fontSize: 16,
     fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: opacity.white90,
     marginBottom: 2,
   },
   adaptationDetail: {
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: opacity.white60,
   },
   // Home view styles
   homeScroll: {
@@ -1543,12 +1544,12 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   tagline: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: opacity.white60,
     fontWeight: '500',
   },
   section: {
@@ -1557,7 +1558,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 16,
   },
   categoriesGrid: {
@@ -1566,16 +1567,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   fullWorkoutCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.lg,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: colors.border,
   },
   fullWorkoutCardRecommended: {
-    borderColor: 'rgba(16, 185, 129, 0.4)',
-    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+    borderColor: opacity.primary40,
+    backgroundColor: opacity.primary5,
   },
   fullWorkoutHeader: {
     flexDirection: 'row',
@@ -1586,57 +1587,57 @@ const styles = StyleSheet.create({
   fullWorkoutName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   fullWorkoutDuration: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#10B981',
+    color: colors.primary,
   },
   fullWorkoutDescription: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: opacity.white70,
     marginBottom: 12,
     lineHeight: 20,
   },
   fullWorkoutDetail: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: opacity.white60,
     marginBottom: 4,
     lineHeight: 18,
   },
   backButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: opacity.white10,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: opacity.white20,
   },
   backButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: opacity.white80,
   },
   // Difficulty badge styles
   difficultyBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: borderRadius.sm,
   },
   difficultyBeginner: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    backgroundColor: opacity.primary20,
   },
   difficultyIntermediate: {
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    backgroundColor: opacity.warning20,
   },
   difficultyAdvanced: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    backgroundColor: opacity.error20,
   },
   difficultyText: {
     fontSize: 11,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: opacity.white80,
     textTransform: 'capitalize',
   },
   // Loading overlay styles
@@ -1648,14 +1649,14 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: opacity.overlay80,
     zIndex: 100,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: opacity.white90,
   },
 });
 

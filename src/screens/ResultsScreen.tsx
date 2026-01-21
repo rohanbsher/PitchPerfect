@@ -27,10 +27,12 @@ import Animated, {
   FadeIn,
   FadeInUp,
 } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { generatePostSessionFeedback } from '../../services/claudeAI';
 import { useStorage } from '../hooks/useStorage';
+import { colors, borderRadius, opacity } from '../theme';
 
 const { width, height } = Dimensions.get('window');
 
@@ -71,8 +73,8 @@ const ConfettiPiece = ({ delay, startX }: { delay: number; startX: number }) => 
     opacity: opacity.value,
   }));
 
-  const colors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
-  const color = colors[Math.floor(Math.random() * colors.length)];
+  const confettiColors = [colors.primary, colors.blue, colors.warning, colors.error, colors.purple, colors.pink];
+  const color = confettiColors[Math.floor(Math.random() * confettiColors.length)];
 
   return (
     <Animated.View
@@ -103,30 +105,35 @@ const Confetti = () => {
 };
 
 // Get celebratory message based on accuracy
-const getMessage = (accuracy: number): { emoji: string; title: string; subtitle: string } => {
+type IoniconsName = keyof typeof Ionicons.glyphMap;
+const getMessage = (accuracy: number): { icon: IoniconsName; iconColor: string; title: string; subtitle: string } => {
   if (accuracy >= 90) {
     return {
-      emoji: '🌟',
+      icon: 'star',
+      iconColor: colors.gold,
       title: 'Outstanding!',
       subtitle: 'You nailed it! Perfect pitch performance!',
     };
   }
   if (accuracy >= 75) {
     return {
-      emoji: '🎉',
+      icon: 'trophy',
+      iconColor: colors.primary,
       title: 'Great Job!',
       subtitle: 'Excellent work! Keep up the momentum!',
     };
   }
   if (accuracy >= 50) {
     return {
-      emoji: '👏',
+      icon: 'thumbs-up',
+      iconColor: colors.blue,
       title: 'Nice Work!',
       subtitle: 'Good progress! Practice makes perfect!',
     };
   }
   return {
-    emoji: '💪',
+    icon: 'fitness',
+    iconColor: colors.purple,
     title: 'Keep Going!',
     subtitle: 'Every session makes you better!',
   };
@@ -287,7 +294,9 @@ export function ResultsScreen({ route, navigation }: Props) {
           entering={FadeInUp.delay(200).duration(600)}
           style={styles.header}
         >
-          <Text style={styles.emoji}>{message.emoji}</Text>
+          <View style={styles.iconContainer}>
+            <Ionicons name={message.icon} size={56} color={message.iconColor} />
+          </View>
           <Text style={styles.title}>{message.title}</Text>
           <Text style={styles.subtitle}>{message.subtitle}</Text>
         </Animated.View>
@@ -306,14 +315,16 @@ export function ResultsScreen({ route, navigation }: Props) {
             entering={FadeInUp.delay(500).duration(600)}
             style={styles.rangeContainer}
           >
-            <Text style={styles.rangeIcon}>🎤</Text>
+            <View style={styles.rangeIconContainer}>
+              <Ionicons name="mic" size={28} color={colors.primary} />
+            </View>
             <Text style={styles.rangeTitle}>Your Vocal Range</Text>
             <View style={styles.rangeNotesRow}>
               <View style={styles.rangeNote}>
                 <Text style={styles.rangeNoteValue}>{lowestNote}</Text>
                 <Text style={styles.rangeNoteLabel}>Low</Text>
               </View>
-              <Text style={styles.rangeArrow}>→</Text>
+              <Ionicons name="arrow-forward" size={24} color={opacity.white50} style={styles.rangeArrow} />
               <View style={styles.rangeNote}>
                 <Text style={styles.rangeNoteValue}>{highestNote}</Text>
                 <Text style={styles.rangeNoteLabel}>High</Text>
@@ -363,7 +374,7 @@ export function ResultsScreen({ route, navigation }: Props) {
             entering={FadeIn.delay(1000).duration(600)}
             style={styles.feedbackContainer}
           >
-            <ActivityIndicator size="small" color="#8B5CF6" />
+            <ActivityIndicator size="small" color={colors.purple} />
             <Text style={styles.feedbackLoadingText}>Analyzing your performance...</Text>
           </Animated.View>
         ) : aiFeedbackError ? (
@@ -371,7 +382,9 @@ export function ResultsScreen({ route, navigation }: Props) {
             entering={FadeInUp.delay(1000).duration(600)}
             style={styles.feedbackErrorContainer}
           >
-            <Text style={styles.feedbackErrorIcon}>ℹ️</Text>
+            <View style={styles.feedbackErrorIconContainer}>
+              <Ionicons name="information-circle" size={36} color={colors.error} />
+            </View>
             <Text style={styles.feedbackErrorTitle}>AI Feedback Unavailable</Text>
             <Text style={styles.feedbackErrorMessage}>{aiFeedbackError}</Text>
             <TouchableOpacity
@@ -392,34 +405,49 @@ export function ResultsScreen({ route, navigation }: Props) {
               onPress={() => setShowFeedback(!showFeedback)}
               activeOpacity={0.7}
             >
-              <Text style={styles.feedbackIcon}>🎯</Text>
+              <View style={styles.feedbackIconContainer}>
+                <Ionicons name="radio-button-on" size={28} color={colors.purple} />
+              </View>
               <View style={styles.feedbackHeaderText}>
                 <Text style={styles.feedbackTitle}>AI Vocal Coach</Text>
                 <Text style={styles.feedbackSubtitle}>
                   {showFeedback ? 'Tap to hide' : 'Tap for personalized tips'}
                 </Text>
               </View>
-              <Text style={styles.feedbackChevron}>{showFeedback ? '▼' : '▶'}</Text>
+              <Ionicons
+                name={showFeedback ? 'chevron-down' : 'chevron-forward'}
+                size={20}
+                color={colors.purple}
+              />
             </TouchableOpacity>
 
             {showFeedback && (
               <View style={styles.feedbackContent}>
                 {/* Technique Tip */}
                 <View style={styles.feedbackSection}>
-                  <Text style={styles.feedbackSectionTitle}>💡 Technique Tip</Text>
+                  <View style={styles.feedbackSectionHeader}>
+                    <Ionicons name="bulb" size={16} color={colors.purple} />
+                    <Text style={styles.feedbackSectionTitle}>Technique Tip</Text>
+                  </View>
                   <Text style={styles.feedbackText}>{aiFeedback.techniqueTip}</Text>
                 </View>
 
                 {/* Recommended Exercise */}
                 <View style={styles.feedbackSection}>
-                  <Text style={styles.feedbackSectionTitle}>🎵 Next Exercise</Text>
+                  <View style={styles.feedbackSectionHeader}>
+                    <Ionicons name="musical-notes" size={16} color={colors.purple} />
+                    <Text style={styles.feedbackSectionTitle}>Next Exercise</Text>
+                  </View>
                   <Text style={styles.feedbackText}>{aiFeedback.recommendedExercise}</Text>
                 </View>
 
                 {/* Strengths */}
                 {aiFeedback.strengths.length > 0 && (
                   <View style={styles.feedbackSection}>
-                    <Text style={styles.feedbackSectionTitle}>✅ Strengths</Text>
+                    <View style={styles.feedbackSectionHeader}>
+                      <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                      <Text style={styles.feedbackSectionTitle}>Strengths</Text>
+                    </View>
                     {aiFeedback.strengths.map((strength, index) => (
                       <Text key={index} style={styles.feedbackListItem}>• {strength}</Text>
                     ))}
@@ -429,7 +457,10 @@ export function ResultsScreen({ route, navigation }: Props) {
                 {/* Improvements */}
                 {aiFeedback.improvements.length > 0 && (
                   <View style={styles.feedbackSection}>
-                    <Text style={styles.feedbackSectionTitle}>🎯 Focus Areas</Text>
+                    <View style={styles.feedbackSectionHeader}>
+                      <Ionicons name="radio-button-on" size={16} color={colors.warning} />
+                      <Text style={styles.feedbackSectionTitle}>Focus Areas</Text>
+                    </View>
                     {aiFeedback.improvements.map((improvement, index) => (
                       <Text key={index} style={styles.feedbackListItem}>• {improvement}</Text>
                     ))}
@@ -469,7 +500,7 @@ export function ResultsScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -490,24 +521,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  emoji: {
-    fontSize: 64,
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: opacity.white10,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 16,
   },
   title: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.7)',
+    color: opacity.white70,
     textAlign: 'center',
   },
   exerciseName: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.5)',
+    color: opacity.white50,
     marginBottom: 32,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -519,22 +555,22 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: colors.border,
   },
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#10B981',
+    color: colors.primary,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
+    color: opacity.white50,
   },
   ringContainer: {
     marginTop: 16,
@@ -544,19 +580,19 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 80,
     borderWidth: 8,
-    borderColor: '#10B981',
+    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: opacity.primary10,
   },
   ringValue: {
     fontSize: 40,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   ringLabel: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.6)',
+    color: opacity.white60,
     marginTop: 4,
   },
   actions: {
@@ -564,28 +600,28 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   primaryButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 16,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.lg,
     padding: 18,
     alignItems: 'center',
   },
   primaryButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   secondaryButton: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.lg,
     padding: 18,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: colors.border,
   },
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
+    color: opacity.white70,
   },
   confettiPiece: {
     position: 'absolute',
@@ -596,64 +632,74 @@ const styles = StyleSheet.create({
   feedbackContainer: {
     width: '100%',
     marginTop: 32,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: '#8B5CF6',
+    borderColor: colors.purple,
     overflow: 'hidden',
   },
   feedbackLoadingText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: opacity.white60,
     marginTop: 12,
     textAlign: 'center',
   },
   feedbackErrorContainer: {
     width: '100%',
     marginTop: 32,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 16,
+    backgroundColor: opacity.error10,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: '#EF4444',
+    borderColor: colors.error,
     padding: 20,
     alignItems: 'center',
   },
-  feedbackErrorIcon: {
-    fontSize: 40,
+  feedbackErrorIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: opacity.error20,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 12,
   },
   feedbackErrorTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#EF4444',
+    color: colors.error,
     marginBottom: 8,
     textAlign: 'center',
   },
   feedbackErrorMessage: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: opacity.white80,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 16,
   },
   feedbackRetryButton: {
-    backgroundColor: '#EF4444',
-    borderRadius: 12,
+    backgroundColor: colors.error,
+    borderRadius: borderRadius.md,
     paddingHorizontal: 24,
     paddingVertical: 10,
   },
   feedbackRetryText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   feedbackHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
   },
-  feedbackIcon: {
-    fontSize: 32,
+  feedbackIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: opacity.purple20,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 16,
   },
   feedbackHeaderText: {
@@ -662,17 +708,12 @@ const styles = StyleSheet.create({
   feedbackTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   feedbackSubtitle: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
-  feedbackChevron: {
-    fontSize: 16,
-    color: '#8B5CF6',
-    marginLeft: 8,
+    color: opacity.white60,
   },
   feedbackContent: {
     paddingHorizontal: 20,
@@ -682,42 +723,52 @@ const styles = StyleSheet.create({
   feedbackSection: {
     gap: 8,
   },
+  feedbackSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   feedbackSectionTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#8B5CF6',
-    marginBottom: 4,
+    color: colors.purple,
   },
   feedbackText: {
     fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: opacity.white90,
     lineHeight: 22,
   },
   feedbackListItem: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: opacity.white80,
     lineHeight: 20,
     paddingLeft: 8,
   },
   // Vocal Range Display styles
   rangeContainer: {
     width: '100%',
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderRadius: 16,
+    backgroundColor: opacity.primary15,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: '#10B981',
+    borderColor: colors.primary,
     padding: 20,
     alignItems: 'center',
     marginBottom: 24,
   },
-  rangeIcon: {
-    fontSize: 36,
+  rangeIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: opacity.primary20,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 8,
   },
   rangeTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#10B981',
+    color: colors.primary,
     marginBottom: 16,
   },
   rangeNotesRow: {
@@ -733,21 +784,20 @@ const styles = StyleSheet.create({
   rangeNoteValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   rangeNoteLabel: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: opacity.white60,
     textTransform: 'uppercase',
   },
   rangeArrow: {
-    fontSize: 24,
-    color: 'rgba(255, 255, 255, 0.5)',
+    marginHorizontal: 8,
   },
   rangeHint: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: opacity.white70,
     textAlign: 'center',
     marginTop: 8,
   },

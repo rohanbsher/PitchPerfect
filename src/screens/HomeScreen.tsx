@@ -24,11 +24,13 @@ import Animated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { TabParamList } from '../navigation/AppNavigator';
 import { useStorage } from '../hooks/useStorage';
 import { getNextExerciseRecommendation } from '../../services/claudeAI';
+import { colors, borderRadius, opacity } from '../theme';
 
 type NavigationProp = BottomTabNavigationProp<TabParamList>;
 
@@ -155,7 +157,7 @@ export function HomeScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#10B981" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -181,9 +183,9 @@ export function HomeScreen() {
         {/* Streak Card */}
         <View style={styles.streakCard}>
           <View style={styles.streakContent}>
-            <Animated.Text style={[styles.streakEmoji, fireAnimatedStyle]}>
-              🔥
-            </Animated.Text>
+            <Animated.View style={[styles.streakIconContainer, fireAnimatedStyle]}>
+              <Ionicons name="flame" size={32} color={colors.flame} />
+            </Animated.View>
             <Animated.View style={[styles.streakInfo, streakAnimatedStyle]}>
               <Text style={styles.streakNumber}>
                 {stats?.currentStreak || 0}
@@ -223,7 +225,7 @@ export function HomeScreen() {
         {/* AI Recommendation Loading */}
         {loadingRecommendation && !recommendation && (
           <View style={styles.recommendationLoading}>
-            <ActivityIndicator size="small" color="#8B5CF6" />
+            <ActivityIndicator size="small" color={colors.purple} />
             <Text style={styles.recommendationLoadingText}>Getting AI recommendation...</Text>
           </View>
         )}
@@ -235,7 +237,9 @@ export function HomeScreen() {
             style={styles.recommendationBanner}
           >
             <View style={styles.recommendationHeader}>
-              <Text style={styles.recommendationIcon}>🎯</Text>
+              <View style={styles.recommendationIconContainer}>
+                <Ionicons name="radio-button-on" size={24} color={colors.purple} />
+              </View>
               <View style={styles.recommendationContent}>
                 <Text style={styles.recommendationTitle}>Recommended for You</Text>
                 <Text style={styles.recommendationExercise}>{recommendation.exerciseName}</Text>
@@ -265,7 +269,7 @@ export function HomeScreen() {
           onPress={handleStartPractice}
           activeOpacity={0.8}
         >
-          <Text style={styles.startButtonIcon}>▶</Text>
+          <Ionicons name="play" size={24} color={colors.textPrimary} style={styles.startButtonIcon} />
           <Text style={styles.startButtonText}>Start Practice</Text>
         </TouchableOpacity>
 
@@ -292,7 +296,9 @@ export function HomeScreen() {
         {/* Empty State */}
         {(!stats || stats.totalSessions === 0) && (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🎵</Text>
+            <View style={styles.emptyIconContainer}>
+              <Ionicons name="musical-notes" size={48} color={colors.primary} />
+            </View>
             <Text style={styles.emptyTitle}>Ready to begin?</Text>
             <Text style={styles.emptySubtitle}>
               Start your first practice session and track your progress!
@@ -307,7 +313,7 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -326,28 +332,33 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.6)',
+    color: colors.textTertiary,
     marginBottom: 4,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   streakCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.lg,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: colors.border,
   },
   streakContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  streakEmoji: {
-    fontSize: 40,
+  streakIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: opacity.warning15,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 16,
   },
   streakInfo: {
@@ -356,16 +367,16 @@ const styles = StyleSheet.create({
   streakNumber: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#10B981',
+    color: colors.primary,
   },
   streakLabel: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.7)',
+    color: colors.textSecondary,
     marginTop: -4,
   },
   bestStreak: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.5)',
+    color: colors.textMuted,
     marginTop: 12,
   },
   statsRow: {
@@ -375,28 +386,28 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: colors.border,
   },
   statNumber: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
+    color: colors.textMuted,
   },
   recommendationBanner: {
-    backgroundColor: 'rgba(139, 92, 246, 0.15)',
-    borderRadius: 16,
+    backgroundColor: opacity.purple15,
+    borderRadius: borderRadius.lg,
     borderWidth: 2,
-    borderColor: '#8B5CF6',
+    borderColor: colors.purple,
     padding: 16,
     marginBottom: 24,
   },
@@ -404,8 +415,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
-  recommendationIcon: {
-    fontSize: 28,
+  recommendationIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: opacity.purple20,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
   recommendationContent: {
@@ -414,7 +430,7 @@ const styles = StyleSheet.create({
   recommendationTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: colors.purple,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 6,
@@ -422,34 +438,34 @@ const styles = StyleSheet.create({
   recommendationExercise: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 6,
   },
   recommendationReason: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: opacity.white80,
     lineHeight: 20,
   },
   recommendationLoading: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    borderRadius: 12,
+    backgroundColor: opacity.purple10,
+    borderRadius: borderRadius.md,
     padding: 16,
     marginBottom: 24,
     gap: 12,
   },
   recommendationLoadingText: {
     fontSize: 14,
-    color: '#8B5CF6',
+    color: colors.purple,
     fontWeight: '500',
   },
   recommendationError: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 12,
+    backgroundColor: opacity.error10,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: '#EF4444',
+    borderColor: colors.error,
     padding: 16,
     marginBottom: 24,
     alignItems: 'center',
@@ -457,24 +473,24 @@ const styles = StyleSheet.create({
   recommendationErrorText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#EF4444',
+    color: colors.error,
     marginBottom: 12,
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#EF4444',
+    backgroundColor: colors.error,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: borderRadius.sm,
   },
   retryButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   startButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 16,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.lg,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
@@ -482,26 +498,24 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   startButtonIcon: {
-    fontSize: 24,
-    color: '#FFFFFF',
     marginRight: 12,
   },
   startButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   weeklyCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: colors.border,
   },
   weeklyTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
+    color: colors.textSecondary,
     marginBottom: 12,
   },
   weeklyStats: {
@@ -515,36 +529,41 @@ const styles = StyleSheet.create({
   weeklyNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#10B981',
+    color: colors.primary,
   },
   weeklyLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
+    color: colors.textMuted,
     marginTop: 4,
   },
   weeklyDivider: {
     width: 1,
     height: 40,
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.border,
     marginHorizontal: 16,
   },
   emptyState: {
     alignItems: 'center',
     paddingVertical: 32,
   },
-  emptyEmoji: {
-    fontSize: 48,
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: opacity.primary10,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.5)',
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 20,
   },
