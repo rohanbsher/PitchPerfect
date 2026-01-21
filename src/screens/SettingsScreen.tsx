@@ -90,7 +90,7 @@ export function SettingsScreen() {
               value={settings.showNoteLabels}
               onValueChange={(value) => update({ showNoteLabels: value })}
               trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor="#FFFFFF"
+              thumbColor={colors.textPrimary}
             />
           </View>
 

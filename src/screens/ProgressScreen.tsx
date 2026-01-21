@@ -170,7 +170,6 @@ const QuickStats = ({
   sessionsThisWeek: number;
   improvementRate: number;
 }) => {
-  const trendIcon = improvementRate >= 0 ? '↑' : '↓';
   const trendColor = improvementRate >= 0 ? colors.success : colors.error;
 
   return (
@@ -179,9 +178,16 @@ const QuickStats = ({
         <Text style={quickStatsStyles.value}>{accuracy}%</Text>
         <Text style={quickStatsStyles.label}>Accuracy</Text>
         {improvementRate !== 0 && (
-          <Text style={[quickStatsStyles.trend, { color: trendColor }]}>
-            {trendIcon} {Math.abs(improvementRate)}%
-          </Text>
+          <View style={quickStatsStyles.trendContainer}>
+            <Ionicons
+              name={improvementRate >= 0 ? 'trending-up' : 'trending-down'}
+              size={14}
+              color={trendColor}
+            />
+            <Text style={[quickStatsStyles.trend, { color: trendColor }]}>
+              {Math.abs(improvementRate)}%
+            </Text>
+          </View>
         )}
       </View>
       <View style={quickStatsStyles.divider} />
@@ -225,6 +231,11 @@ const quickStatsStyles = StyleSheet.create({
   trend: {
     fontSize: 11,
     fontWeight: '600',
+    marginLeft: 2,
+  },
+  trendContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 2,
   },
   divider: {
@@ -287,7 +298,7 @@ const WeeklySummary = ({
                 isPracticed && weeklySummaryStyles.dayDotActive,
                 isToday && weeklySummaryStyles.dayDotToday,
               ]}>
-                {isPracticed && <Text style={weeklySummaryStyles.checkmark}>✓</Text>}
+                {isPracticed && <Ionicons name="checkmark" size={14} color={colors.textPrimary} />}
               </View>
             </View>
           );
@@ -491,8 +502,14 @@ const AccuracyChart = ({ sessions }: { sessions: SessionRecord[] }) => {
 
       {/* Trend indicator */}
       <View style={chartStyles.trendRow}>
+        <Ionicons
+          name={trend >= 0 ? 'trending-up' : 'trending-down'}
+          size={16}
+          color={trendColor}
+          style={{ marginRight: 4 }}
+        />
         <Text style={[chartStyles.trendText, { color: trendColor }]}>
-          {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}% {trend >= 0 ? 'improvement' : 'decline'}
+          {Math.abs(trend)}% {trend >= 0 ? 'improvement' : 'decline'}
         </Text>
       </View>
     </View>
@@ -594,7 +611,9 @@ const chartStyles = StyleSheet.create({
     textAlign: 'center',
   },
   trendRow: {
+    flexDirection: 'row',
     marginTop: 12,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   trendText: {
@@ -653,7 +672,7 @@ const InteractiveCalendar = ({
           onPress={() => setMonthOffset(prev => prev - 1)}
           style={calendarStyles.navButton}
         >
-          <Text style={calendarStyles.navText}>←</Text>
+          <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={calendarStyles.monthLabel}>{monthLabel}</Text>
         <TouchableOpacity
@@ -661,9 +680,11 @@ const InteractiveCalendar = ({
           style={calendarStyles.navButton}
           disabled={monthOffset >= 0}
         >
-          <Text style={[calendarStyles.navText, monthOffset >= 0 && calendarStyles.navDisabled]}>
-            →
-          </Text>
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={monthOffset >= 0 ? colors.textDisabled : colors.textPrimary}
+          />
         </TouchableOpacity>
       </View>
 
@@ -1016,7 +1037,11 @@ const SessionCard = ({
             <Text style={sessionStyles.date}>{formatDate(session.date)}</Text>
           </View>
         </View>
-        <Text style={sessionStyles.expandIcon}>{isExpanded ? '▼' : '▶'}</Text>
+        <Ionicons
+          name={isExpanded ? 'chevron-down' : 'chevron-forward'}
+          size={18}
+          color={colors.textMuted}
+        />
       </View>
 
       {isExpanded && (
@@ -1035,7 +1060,7 @@ const SessionCard = ({
             <View style={sessionStyles.detailRow}>
               <Text style={sessionStyles.detailLabel}>Range Used</Text>
               <Text style={sessionStyles.detailValue}>
-                {session.lowestNote} → {session.highestNote}
+                {session.lowestNote} - {session.highestNote}
               </Text>
             </View>
           )}

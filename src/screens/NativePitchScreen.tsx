@@ -25,6 +25,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { useNativePitchDetector } from '../hooks/useNativePitchDetector';
 import { Audio } from 'expo-av';
+import { Ionicons } from '@expo/vector-icons';
 import { ExerciseEngine, ExerciseState, BreathingState } from '../engines/ExerciseEngine';
 import { RangeCheckEngine, RangeCheckState, RangeCheckResult, DetectedNote } from '../engines/RangeCheckEngine';
 import { ExerciseNote, DAILY_WORKOUTS, QUICK_WARMUPS, EXERCISE_CATEGORIES, CATEGORY_INFO, EXERCISES, BREATHING_EXERCISES, type ExerciseCategory, getDefaultBreathingExercise, generateRangeBasedScale } from '../data/exercises';
@@ -900,7 +901,8 @@ export const NativePitchScreen: React.FC = () => {
               onPress={() => exerciseEngineRef.current?.skipToWorkout()}
               activeOpacity={0.7}
             >
-              <Text style={styles.skipButtonText}>Skip to Workout →</Text>
+              <Text style={styles.skipButtonText}>Skip to Workout</Text>
+              <Ionicons name="arrow-forward" size={14} color={colors.primary} style={{ marginLeft: 4 }} />
             </TouchableOpacity>
           </View>
         ) : null}
@@ -997,7 +999,8 @@ export const NativePitchScreen: React.FC = () => {
             onPress={() => setViewMode('home')}
             activeOpacity={0.8}
           >
-            <Text style={styles.backButtonText}>← Back to Home</Text>
+            <Ionicons name="arrow-back" size={16} color={opacity.white80} style={{ marginRight: 4 }} />
+            <Text style={styles.backButtonText}>Back to Home</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -1320,6 +1323,9 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   skipButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 40,
     paddingHorizontal: 24,
     paddingVertical: 12,
@@ -1607,10 +1613,12 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   backButton: {
+    flexDirection: 'row',
     backgroundColor: opacity.white10,
     paddingVertical: 16,
     borderRadius: borderRadius.md,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: opacity.white20,
   },

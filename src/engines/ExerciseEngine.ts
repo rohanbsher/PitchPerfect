@@ -747,16 +747,16 @@ export class ExerciseEngine {
     const isFlat = avgFrequency < targetNote.frequency;
 
     if (accuracy >= 90) {
-      this.callbacks.onFeedback?.('Perfect! ✓');
+      this.callbacks.onFeedback?.('Perfect!');
     } else if (accuracy >= 70) {
       // Good - show direction hint
-      this.callbacks.onFeedback?.(isFlat ? 'Good! ↑' : 'Good! ↓');
+      this.callbacks.onFeedback?.(isFlat ? 'Good! Go up' : 'Good! Go down');
     } else if (accuracy >= 50) {
       // Needs work - clear direction
-      this.callbacks.onFeedback?.(isFlat ? 'Try higher ↑' : 'Try lower ↓');
+      this.callbacks.onFeedback?.(isFlat ? 'Go higher' : 'Go lower');
     } else {
       // Poor - simple direction only
-      this.callbacks.onFeedback?.(isFlat ? 'Higher ↑' : 'Lower ↓');
+      this.callbacks.onFeedback?.(isFlat ? 'Higher' : 'Lower');
     }
 
     // REMOVED: Per-note voice feedback - too distracting for beginners

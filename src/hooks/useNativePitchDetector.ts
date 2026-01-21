@@ -91,9 +91,9 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
     }
 
     try {
-      console.log('🔐 Requesting microphone permissions...');
+      console.log('[Permissions] Requesting microphone permissions...');
       const result = await PitchDetectorModule.requestPermissions();
-      console.log('🔐 Permission result:', result);
+      console.log('[Permissions] Result:', result);
       hasPermission.value = result === 'granted';
       return result === 'granted';
     } catch (error) {
@@ -129,13 +129,13 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
     }
 
     // Subscribe to pitch events
-    console.log('📡 Setting up pitch event listener...');
+    console.log('[PitchDetector] Setting up pitch event listener...');
     subscriptionRef.current = eventEmitterRef.current.addListener(
       'onPitchDetected',
       (data: NativePitchData) => {
         // Log incoming data periodically (5% of events)
         if (Math.random() < 0.05) {
-          console.log('🎵 Pitch:', data.frequency.toFixed(1), 'Hz', data.note, 'conf:', data.confidence.toFixed(2));
+          console.log('[Pitch]', data.frequency.toFixed(1), 'Hz', data.note, 'conf:', data.confidence.toFixed(2));
         }
 
         // Update shared values (no React re-render!)
@@ -150,7 +150,7 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
         }
       }
     );
-    console.log('✅ Pitch event listener ready');
+    console.log('[PitchDetector] Event listener ready');
 
     // Start the native audio engine
     PitchDetectorModule.startPitchDetection((error, result) => {
@@ -158,7 +158,7 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
         console.error('Failed to start pitch detection:', error);
         isListening.value = false;
       } else {
-        console.log('✅ Native pitch detection started:', result);
+        console.log('[PitchDetector] Started:', result);
         isListening.value = true;
       }
     });
@@ -187,7 +187,7 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
     centsOff.value = 0;
     rms.value = 0;
 
-    console.log('🛑 Native pitch detection stopped');
+    console.log('[PitchDetector] Stopped');
   }, []);
 
   // Handle app state changes (background/foreground)
@@ -204,7 +204,7 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
           wasListeningBeforeBackgroundRef.current = true;
           PitchDetectorModule.stopPitchDetection();
           isListening.value = false;
-          console.log('🛑 Pitch detection paused (app background)');
+          console.log('[PitchDetector] Paused (app background)');
         }
       } else if (nextAppState === 'active') {
         // Resume if we were listening before going to background
@@ -221,7 +221,7 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
                   console.warn('Could not resume pitch detection:', error);
                 } else {
                   isListening.value = true;
-                  console.log('✅ Pitch detection resumed:', result);
+                  console.log('[PitchDetector] Resumed:', result);
                 }
               });
             } catch (e) {
@@ -282,7 +282,7 @@ export const useNativePitchDetector = (options: UseNativePitchDetectorOptions = 
         const PitchDetectorModule = getPitchDetectorModule();
         if (PitchDetectorModule) {
           PitchDetectorModule.stopPitchDetection();
-          console.log('🛑 Native pitch detection stopped (unmount cleanup)');
+          console.log('[PitchDetector] Stopped (unmount cleanup)');
         }
       } catch (error) {
         console.warn('Error stopping pitch detection:', error);
