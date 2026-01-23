@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import Accelerate
+import React
 
 @objc(PitchDetectorModule)
 class PitchDetectorModule: RCTEventEmitter {
